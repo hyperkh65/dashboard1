@@ -161,6 +161,24 @@ export interface Comment {
   author?: Profile
 }
 
+export interface Video {
+  id: string
+  title: string
+  description: string | null
+  video_url: string
+  thumbnail_url: string | null
+  uploader_id: string
+  view_cost: number
+  uploader_reward: number
+  view_count: number
+  is_published: boolean
+  created_at: string
+  updated_at: string
+  // Joined
+  uploader?: Profile
+  has_viewed?: boolean  // current user already watched?
+}
+
 export interface BotJob {
   id: string
   job_type: string
@@ -246,6 +264,16 @@ export const GRADE_REQUIREMENTS = [
   { grade: '나무' as Grade, minDays: 90, minActivity: 30 },
   { grade: '열매' as Grade, minDays: 180, minActivity: 100 },
 ]
+
+// 등급별 강의 포인트 설정 한도
+export const GRADE_VIDEO_MAX_COST: Record<Grade, number> = {
+  '씨앗': 0,
+  '새싹': 0,
+  '잎새': 10,
+  '나무': 30,
+  '열매': 100,
+  'staff': 9999,
+}
 
 // 포인트 활동 정보
 export const POINT_ACTIONS = [
