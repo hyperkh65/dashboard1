@@ -1,14 +1,17 @@
 import { Resend } from 'resend'
 import { createAdminClient } from './supabase/server'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 const FROM_EMAIL = process.env.EMAIL_FROM || 'newsletter@2days.kr'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://club.2days.kr'
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || 'AI 인사이트 카페'
 
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
+
 /** 뉴스레터 구독 확인 메일 */
 export async function sendWelcomeEmail(email: string, name?: string) {
+  const resend = getResend()
   await resend.emails.send({
     from: `${SITE_NAME} <${FROM_EMAIL}>`,
     to: email,
@@ -53,6 +56,7 @@ export async function sendNewsletterForPost(post: {
   excerpt?: string
   cover_image?: string
 }) {
+  const resend = getResend()
   const supabase = createAdminClient()
 
   // 활성 구독자 전체 조회
