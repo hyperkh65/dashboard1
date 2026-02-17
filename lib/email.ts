@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import { createAdminClient } from './supabase/server'
 
-const FROM_EMAIL = process.env.EMAIL_FROM || 'newsletter@2days.kr'
+const FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@email.2days.kr'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://club.2days.kr'
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || 'AI 인사이트 카페'
 
