@@ -14,11 +14,12 @@ export interface Profile {
   membership_tier: 'free' | 'basic' | 'premium'
   membership_expires_at: string | null
   is_admin: boolean
-  // 등급 시스템
   grade: Grade
   post_count: number
   comment_count: number
   visit_count: number
+  points: number
+  total_points: number
   last_visited_at: string | null
   grade_updated_at: string | null
   cafe_joined_at: string
@@ -36,9 +37,21 @@ export interface Board {
   order_index: number
   read_permission: BoardPermission
   write_permission: BoardPermission
+  comment_permission: BoardPermission
+  min_points: number
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface PointLog {
+  id: string
+  user_id: string
+  points: number
+  reason: string
+  ref_type: string | null
+  ref_id: string | null
+  created_at: string
 }
 
 export interface Category {
@@ -213,6 +226,18 @@ export const GRADE_INFO: Record<Grade, { label: string; emoji: string; color: st
   },
 }
 
+export const GRADE_ORDER: Grade[] = ['씨앗', '새싹', '잎새', '나무', '열매', 'staff']
+
+// 등급 비교 (a >= b 이면 true)
+export function gradeGte(a: Grade, b: BoardPermission): boolean {
+  if (b === 'all') return true
+  if (b === 'member') return true
+  if (b === 'staff') return a === 'staff'
+  const aIdx = GRADE_ORDER.indexOf(a)
+  const bIdx = GRADE_ORDER.indexOf(b as Grade)
+  return aIdx >= bIdx
+}
+
 // 등급 업그레이드 조건
 export const GRADE_REQUIREMENTS = [
   { grade: '씨앗' as Grade, minDays: 0, minActivity: 0 },
@@ -220,4 +245,12 @@ export const GRADE_REQUIREMENTS = [
   { grade: '잎새' as Grade, minDays: 30, minActivity: 10 },
   { grade: '나무' as Grade, minDays: 90, minActivity: 30 },
   { grade: '열매' as Grade, minDays: 180, minActivity: 100 },
+]
+
+// 포인트 활동 정보
+export const POINT_ACTIONS = [
+  { action: '게시글 작성', points: 10, emoji: '✍️' },
+  { action: '댓글 작성', points: 5, emoji: '💬' },
+  { action: '좋아요 받음', points: 2, emoji: '❤️' },
+  { action: '일일 로그인', points: 3, emoji: '📅' },
 ]

@@ -172,6 +172,7 @@ export default function AdminBoardsPage() {
             <p className="text-xs text-blue-600 dark:text-blue-400">
               읽기 권한: 게시글 목록 및 내용을 볼 수 있는 최소 등급<br />
               쓰기 권한: 게시글을 작성할 수 있는 최소 등급<br />
+              최소 포인트: 읽기에 필요한 추가 포인트 조건 (0=제한없음)<br />
               등급 순서: 씨앗 → 새싹 → 잎새 → 나무 → 열매 → 스탭
             </p>
           </div>

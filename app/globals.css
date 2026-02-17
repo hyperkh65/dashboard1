@@ -54,3 +54,23 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* 스크롤바 숨김 (모바일 탭 등) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 모바일 safe area */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 모바일 터치 최적화 */
+@media (max-width: 768px) {
+  * { -webkit-tap-highlight-color: transparent; }
+  button, a { touch-action: manipulation; }
+}

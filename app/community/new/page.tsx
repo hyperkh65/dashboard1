@@ -7,10 +7,10 @@ import Link from 'next/link'
 import { ArrowLeft, Send, ImagePlus, X, Video, Loader2 } from 'lucide-react'
 
 const BOARDS = [
+  { slug: 'intro', name: '가입인사' },
   { slug: 'general', name: '자유게시판' },
   { slug: 'question', name: '질문답변' },
   { slug: 'showcase', name: 'AI 인사이트 공유' },
-  { slug: 'notice', name: '공지사항' },
   { slug: 'study', name: '스터디 모집' },
 ]
 
