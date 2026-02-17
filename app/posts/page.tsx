@@ -4,6 +4,7 @@ import { TrendingUp, Eye, Heart, Tag, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import AdminWriteButton from '@/components/posts/AdminWriteButton'
+import NewsletterForm from '@/components/NewsletterForm'
 
 export const revalidate = 60
 
@@ -142,6 +143,39 @@ export default async function PostsPage({
           <p>아직 게시글이 없습니다. 곧 업데이트됩니다!</p>
         </div>
       )}
+
+      {/* Newsletter Banner */}
+      <div className="mt-20 relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-1">
+        <div className="relative rounded-[22px] bg-white dark:bg-gray-950 px-8 py-12 md:px-16 md:py-16 text-center">
+          {/* 배경 장식 */}
+          <div className="absolute inset-0 overflow-hidden rounded-[22px] pointer-events-none">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-indigo-100 dark:bg-indigo-900/20 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-100 dark:bg-purple-900/20 rounded-full blur-3xl" />
+          </div>
+
+          <div className="relative">
+            <div className="inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-sm font-semibold px-4 py-1.5 rounded-full mb-5">
+              <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+              무료 뉴스레터
+            </div>
+
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-3 leading-tight">
+              새 AI 인사이트,<br />
+              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                메일로 바로 받아보세요
+              </span>
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 text-base md:text-lg mb-8 max-w-lg mx-auto">
+              새 글이 올라올 때마다 이메일로 알려드립니다.<br className="hidden md:block" />
+              스팸 없음 · 언제든 구독 취소 가능
+            </p>
+
+            <div className="max-w-md mx-auto">
+              <NewsletterForm />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
