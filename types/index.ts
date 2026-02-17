@@ -1,3 +1,9 @@
+// 등급 타입
+export type Grade = '씨앗' | '새싹' | '잎새' | '나무' | '열매' | 'staff'
+
+// 게시판 읽기/쓰기 권한 타입
+export type BoardPermission = 'all' | 'member' | '씨앗' | '새싹' | '잎새' | '나무' | '열매' | 'staff'
+
 export interface Profile {
   id: string
   username: string
@@ -8,6 +14,29 @@ export interface Profile {
   membership_tier: 'free' | 'basic' | 'premium'
   membership_expires_at: string | null
   is_admin: boolean
+  // 등급 시스템
+  grade: Grade
+  post_count: number
+  comment_count: number
+  visit_count: number
+  last_visited_at: string | null
+  grade_updated_at: string | null
+  cafe_joined_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Board {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  color: string
+  icon: string
+  order_index: number
+  read_permission: BoardPermission
+  write_permission: BoardPermission
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -86,16 +115,25 @@ export interface CommunityPost {
   title: string
   content: string
   author_id: string
+  // 게시판 (boards 테이블 연동)
+  board_id: string | null
+  board_slug: string
+  // 기존 카테고리 (하위호환)
   category: 'general' | 'question' | 'showcase' | 'news' | 'discussion'
   is_pinned: boolean
   view_count: number
   like_count: number
   comment_count: number
   is_published: boolean
+  // 미디어 (이미지/동영상)
+  media_urls: string[]
+  thumbnail_url: string | null
+  tags: string[]
   created_at: string
   updated_at: string
   // Joined
   author?: Profile
+  board?: Board
 }
 
 export interface Comment {
@@ -128,3 +166,58 @@ export interface ApiResponse<T> {
   error: string | null
   message?: string
 }
+
+// 등급 정보
+export const GRADE_INFO: Record<Grade, { label: string; emoji: string; color: string; bg: string; desc: string }> = {
+  '씨앗': {
+    label: '씨앗',
+    emoji: '🌱',
+    color: 'text-green-600',
+    bg: 'bg-green-100 dark:bg-green-900/30',
+    desc: '갓 가입한 새 멤버',
+  },
+  '새싹': {
+    label: '새싹',
+    emoji: '🌿',
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+    desc: '7일 이상 또는 활동 5회 이상',
+  },
+  '잎새': {
+    label: '잎새',
+    emoji: '🍃',
+    color: 'text-teal-600',
+    bg: 'bg-teal-100 dark:bg-teal-900/30',
+    desc: '30일 이상 AND 활동 10회 이상',
+  },
+  '나무': {
+    label: '나무',
+    emoji: '🌳',
+    color: 'text-cyan-600',
+    bg: 'bg-cyan-100 dark:bg-cyan-900/30',
+    desc: '90일 이상 AND 활동 30회 이상',
+  },
+  '열매': {
+    label: '열매',
+    emoji: '🍎',
+    color: 'text-orange-600',
+    bg: 'bg-orange-100 dark:bg-orange-900/30',
+    desc: '180일 이상 AND 활동 100회 이상',
+  },
+  'staff': {
+    label: '스탭',
+    emoji: '👑',
+    color: 'text-yellow-600',
+    bg: 'bg-yellow-100 dark:bg-yellow-900/30',
+    desc: '운영진',
+  },
+}
+
+// 등급 업그레이드 조건
+export const GRADE_REQUIREMENTS = [
+  { grade: '씨앗' as Grade, minDays: 0, minActivity: 0 },
+  { grade: '새싹' as Grade, minDays: 7, minActivity: 5 },
+  { grade: '잎새' as Grade, minDays: 30, minActivity: 10 },
+  { grade: '나무' as Grade, minDays: 90, minActivity: 30 },
+  { grade: '열매' as Grade, minDays: 180, minActivity: 100 },
+]
