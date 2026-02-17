@@ -5,6 +5,7 @@
 
 import { createAdminClient } from './supabase/server'
 import { syncPostToNotion } from './notion'
+import { sendNewsletterForPost } from './email'
 
 // 슬러그 생성 (한글 지원)
 export function generateSlug(title: string): string {
@@ -103,6 +104,16 @@ export async function botCreatePost(data: {
       started_at: new Date().toISOString(),
       completed_at: new Date().toISOString(),
     })
+
+    // 뉴스레터 자동 발송 (멤버 전용 제외)
+    if (!data.is_members_only) {
+      sendNewsletterForPost({
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        cover_image: post.cover_image,
+      }).catch((e) => console.error('뉴스레터 발송 실패:', e))
+    }
 
     return { success: true, post_id: post.id }
   } catch (error) {

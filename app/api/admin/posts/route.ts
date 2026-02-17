@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { sendNewsletterForPost } from '@/lib/email'
 
 /**
  * POST /api/admin/posts - 관리자 세션 인증으로 게시글 생성
@@ -75,6 +76,16 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // 발행 글이면 뉴스레터 자동 발송 (멤버 전용 제외)
+  if (is_published !== false && !is_members_only) {
+    sendNewsletterForPost({
+      title: data.title,
+      slug: data.slug,
+      excerpt: data.excerpt,
+      cover_image: data.cover_image,
+    }).catch((e) => console.error('뉴스레터 발송 실패:', e))
   }
 
   return NextResponse.json({ data, message: '게시글이 생성되었습니다' }, { status: 201 })
