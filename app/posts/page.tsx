@@ -4,6 +4,7 @@ import { TrendingUp, Eye, Heart, Tag, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import AdminWriteButton from '@/components/posts/AdminWriteButton'
+import AdminPostActions from '@/components/posts/AdminPostActions'
 import NewsletterForm from '@/components/NewsletterForm'
 
 export const revalidate = 60
@@ -89,52 +90,60 @@ export default async function PostsPage({
       {posts && posts.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {posts.map((post) => (
-            <Link
-              key={post.id}
-              href={`/posts/${post.slug}`}
-              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden card-hover block"
-            >
-              {post.cover_image ? (
-                <div className="aspect-video bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                  <img src={post.cover_image} alt={post.title} className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="aspect-video bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
-                  <TrendingUp className="w-12 h-12 text-indigo-300" />
-                </div>
-              )}
-              <div className="p-5">
-                {post.category && (
-                  <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-full">
-                    {post.category.name}
-                  </span>
+            <div key={post.id} className="relative group">
+              <Link
+                href={`/posts/${post.slug}`}
+                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden card-hover block"
+              >
+                {post.cover_image ? (
+                  <div className="aspect-video bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                    <img src={post.cover_image} alt={post.title} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center">
+                    <TrendingUp className="w-12 h-12 text-indigo-300" />
+                  </div>
                 )}
-                <h3 className="font-semibold text-gray-900 dark:text-white mt-3 mb-2 line-clamp-2 leading-snug">
-                  {post.title}
-                </h3>
-                {post.excerpt && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">
-                    {post.excerpt}
-                  </p>
-                )}
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5" /> {post.view_count}
+                <div className="p-5">
+                  {post.category && (
+                    <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-full">
+                      {post.category.name}
                     </span>
+                  )}
+                  <h3 className="font-semibold text-gray-900 dark:text-white mt-3 mb-2 line-clamp-2 leading-snug">
+                    {post.title}
+                  </h3>
+                  {post.excerpt && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">
+                      {post.excerpt}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center gap-1">
+                        <Eye className="w-3.5 h-3.5" /> {post.view_count}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Heart className="w-3.5 h-3.5" /> {post.like_count}
+                      </span>
+                    </div>
                     <span className="flex items-center gap-1">
-                      <Heart className="w-3.5 h-3.5" /> {post.like_count}
+                      <Clock className="w-3.5 h-3.5" />
+                      {post.published_at
+                        ? formatDistanceToNow(new Date(post.published_at), { addSuffix: true, locale: ko })
+                        : '방금 전'}
                     </span>
                   </div>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    {post.published_at
-                      ? formatDistanceToNow(new Date(post.published_at), { addSuffix: true, locale: ko })
-                      : '방금 전'}
-                  </span>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              {/* 관리자 오버레이 액션 (호버 시 표시) */}
+              <AdminPostActions
+                postId={post.id}
+                postSlug={post.slug}
+                currentCategoryId={post.category_id}
+                mode="overlay"
+              />
+            </div>
           ))}
         </div>
       ) : (
