@@ -91,6 +91,30 @@ export default async function PostDetailPage({
         )}
       </div>
 
+      {/* Media (images & videos) */}
+      {post.media_urls && post.media_urls.length > 0 && (
+        <div className="mt-8 space-y-4">
+          {post.media_urls.map((url: string, i: number) => {
+            const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url)
+            return isVideo ? (
+              <video
+                key={i}
+                src={url}
+                controls
+                className="w-full rounded-2xl max-h-[480px] bg-black"
+              />
+            ) : (
+              <img
+                key={i}
+                src={url}
+                alt={`미디어 ${i + 1}`}
+                className="w-full rounded-2xl object-contain max-h-[600px] bg-gray-50 dark:bg-gray-800"
+              />
+            )
+          })}
+        </div>
+      )}
+
       {/* Tags */}
       {post.tags && post.tags.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-8 pt-8 border-t border-gray-100 dark:border-gray-800">

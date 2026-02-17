@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { title, content, excerpt, category_slug, tags, cover_image, source_url, is_members_only } = body
+  const { title, content, excerpt, category_slug, tags, cover_image, media_urls, source_url, is_members_only } = body
 
   if (!title || !content) {
     return NextResponse.json({ error: 'title과 content는 필수입니다' }, { status: 400 })
@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       content,
       excerpt: excerpt || content.substring(0, 200),
       cover_image: cover_image || null,
+      media_urls: media_urls || [],
       category_id: categoryId,
       tags: tags || [],
       source_url: source_url || null,

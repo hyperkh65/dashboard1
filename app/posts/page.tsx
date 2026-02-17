@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { TrendingUp, Eye, Heart, Tag, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import AdminWriteButton from '@/components/posts/AdminWriteButton'
 
 export const revalidate = 60
 
@@ -43,12 +44,17 @@ export default async function PostsPage({
           <TrendingUp className="w-5 h-5" />
           <span className="font-medium">AI 인사이트</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          최신 AI 인사이트 & 뉴스
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          매일 업데이트되는 최신 AI 트렌드와 인사이트를 만나보세요
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              최신 AI 인사이트 & 뉴스
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              매일 업데이트되는 최신 AI 트렌드와 인사이트를 만나보세요
+            </p>
+          </div>
+          <AdminWriteButton />
+        </div>
       </div>
 
       {/* Category Filter */}
