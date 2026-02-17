@@ -8,7 +8,7 @@ import { isMobile } from "@/lib/mobile";
 
 export const metadata: Metadata = {
   title: "AI 인사이트 카페",
-  description: "AI 인사이트를 얻고 함께 성장하는 커뮤니티. 지금 가입하면 6개월 무료!",
+  description: "AI 인사이트를 얻고 함께 성장하는 커뮤니티. 지금 가입하면 평생 무료!",
   keywords: ["AI", "인공지능", "ChatGPT", "강의", "커뮤니티", "인사이트"],
   openGraph: {
     title: "AI 인사이트 카페",

@@ -23,7 +23,7 @@ export default function MembershipPage() {
     {
       name: 'Basic',
       icon: Star,
-      price: '9,900',
+      price: '5,000',
       period: '/월',
       color: 'indigo',
       features: [
@@ -41,7 +41,7 @@ export default function MembershipPage() {
     {
       name: 'Premium',
       icon: Crown,
-      price: '29,900',
+      price: '10,000',
       period: '/월',
       color: 'purple',
       features: [

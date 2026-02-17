@@ -17,14 +17,14 @@ export default function HomePage() {
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-10">
             검증된 AI 활용 노하우, 실전 강의, 그리고 함께 성장하는 커뮤니티.<br />
-            지금 가입하면 <strong className="text-indigo-600 dark:text-indigo-400">6개월 무료</strong>로 카페를 이용할 수 있습니다.
+            지금 가입하면 <strong className="text-indigo-600 dark:text-indigo-400">평생 무료</strong>로 카페를 이용할 수 있습니다.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/signup"
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-4 rounded-xl transition-all hover:scale-105 flex items-center gap-2 justify-center"
             >
-              6개월 무료로 시작하기
+              평생 무료로 시작하기
               <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
@@ -39,7 +39,7 @@ export default function HomePage() {
           {/* 무료 배지 */}
           <div className="mt-8 inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-300 rounded-full px-5 py-2 text-sm font-medium">
             <Coffee className="w-4 h-4" />
-            지금 가입 시 6개월 카페 멤버십 무료 제공
+            지금 가입 시 평생 카페 멤버십 무료 제공
           </div>
         </div>
       </section>
@@ -52,7 +52,7 @@ export default function HomePage() {
               { value: '1,000+', label: 'AI 인사이트 아티클' },
               { value: '50+', label: '강의 & 튜토리얼' },
               { value: '5,000+', label: '카페 멤버' },
-              { value: '6개월', label: '신규 가입 무료 혜택' },
+              { value: '평생', label: '신규 가입 무료 혜택' },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="text-3xl font-bold gradient-text mb-1">{stat.value}</div>
@@ -127,7 +127,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 6개월 무료 카페 가입 섹션 */}
+      {/* 평생 무료 카페 가입 섹션 */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-3xl p-12 text-white">
@@ -137,9 +137,9 @@ export default function HomePage() {
                   <Coffee className="w-4 h-4" />
                   지금 바로 시작하세요
                 </div>
-                <h2 className="text-3xl font-bold mb-4">6개월 무료 카페 가입</h2>
+                <h2 className="text-3xl font-bold mb-4">평생 무료 카페 가입</h2>
                 <p className="text-indigo-100 mb-8 leading-relaxed">
-                  AI 인사이트 카페에 지금 가입하면 6개월 동안 모든 게시판과 콘텐츠를 무료로 이용할 수 있습니다.
+                  AI 인사이트 카페에 지금 가입하면 평생 동안 모든 게시판과 콘텐츠를 무료로 이용할 수 있습니다.
                   활동을 통해 등급을 올리고 더 많은 혜택을 누리세요.
                 </p>
                 <Link
@@ -214,7 +214,7 @@ export default function HomePage() {
               {
                 name: 'Free',
                 price: '무료',
-                badge: '6개월 카페 무료',
+                badge: '평생 카페 무료',
                 features: ['기본 AI 인사이트', '카페 게시판 참여', '등급 성장 시스템', '무료 강의 일부'],
                 cta: '무료로 시작하기',
                 href: '/signup',
@@ -222,7 +222,7 @@ export default function HomePage() {
               },
               {
                 name: 'Basic',
-                price: '월 9,900원',
+                price: '월 5,000원',
                 badge: '가장 인기',
                 features: ['모든 AI 인사이트', '전체 강의 접근', '멤버 전용 게시판', 'Notion 연동'],
                 cta: '베이직 시작',
@@ -231,7 +231,7 @@ export default function HomePage() {
               },
               {
                 name: 'Premium',
-                price: '월 29,900원',
+                price: '월 10,000원',
                 badge: '최고 혜택',
                 features: ['베이직 모든 기능', 'AI 봇 API 접근', '1:1 멘토링', '그룹 스터디'],
                 cta: '프리미엄 시작',
