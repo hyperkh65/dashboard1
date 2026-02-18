@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { BarChart3, FileText, BookOpen, Users, Bot, RefreshCcw, Settings, LayoutList, Crown, Shield } from 'lucide-react'
+import { BarChart3, FileText, BookOpen, Users, Bot, RefreshCcw, Settings, LayoutList, Crown, Shield, Globe } from 'lucide-react'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -103,6 +103,7 @@ export default async function AdminPage() {
           <h2 className="font-semibold text-gray-900 dark:text-white mb-4">빠른 작업</h2>
           <div className="space-y-2">
             {[
+              { label: '사이트 관리', href: '/admin/sites', icon: Globe, desc: '추천 사이트 추가/관리' },
               { label: '게시판 권한 관리', href: '/admin/boards', icon: LayoutList, desc: '읽기/쓰기 권한 설정' },
               { label: '멤버 등급 관리', href: '/admin/members', icon: Crown, desc: '등급 수동 조정' },
               { label: 'AI 인사이트 새 글', href: '/admin/posts/new', icon: FileText, desc: '인사이트 발행' },

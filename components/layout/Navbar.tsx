@@ -48,6 +48,9 @@ export default function Navbar() {
             <Link href="/membership" className="text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors font-medium">
               멤버십
             </Link>
+            <Link href="/sites" className="text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors font-medium">
+              사이트
+            </Link>
           </div>
 
           {/* Auth Buttons */}
@@ -100,6 +103,7 @@ export default function Navbar() {
               { href: '/courses', label: '강의' },
               { href: '/community', label: '커뮤니티' },
               { href: '/membership', label: '멤버십' },
+              { href: '/sites', label: '사이트' },
             ].map((item) => (
               <Link
                 key={item.href}
