@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, Save, Globe, ExternalLink, Check, X, Clock, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, Globe, ExternalLink, Check, X, Clock, AlertCircle, Upload, ImageIcon } from 'lucide-react'
 
 interface PromotedSite {
   id: string
@@ -12,6 +12,7 @@ interface PromotedSite {
   url: string
   description: string
   logo_url: string
+  thumbnail_url: string | null
   category: string
   is_active: boolean
   order_index: number
@@ -21,11 +22,18 @@ interface PromotedSite {
   created_at: string
 }
 
+const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'quicktime']
+function isVideo(url: string) {
+  const ext = url.split('.').pop()?.split('?')[0]?.toLowerCase() ?? ''
+  return VIDEO_EXTS.includes(ext) || url.includes('video')
+}
+
 const EMPTY_FORM = {
   name: '',
   url: '',
   description: '',
   logo_url: '',
+  thumbnail_url: '',
   category: '일반',
   is_active: true,
   order_index: 0,
@@ -54,12 +62,19 @@ const STATUS_LABEL: Record<string, string> = {
 export default function AdminSitesPage() {
   const router = useRouter()
   const supabase = createClient()
+  const thumbInputRef = useRef<HTMLInputElement>(null)
+  const editThumbRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const [sites, setSites] = useState<PromotedSite[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [formThumbFile, setFormThumbFile] = useState<File | null>(null)
+  const [formThumbPreview, setFormThumbPreview] = useState<string | null>(null)
+  const [editThumbFiles, setEditThumbFiles] = useState<Record<string, File>>({})
+  const [editThumbPreviews, setEditThumbPreviews] = useState<Record<string, string>>({})
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [activeTab, setActiveTab] = useState<TabKey>('pending')
@@ -95,26 +110,68 @@ export default function AdminSitesPage() {
     else { setError(msg); setTimeout(() => setError(''), 4000) }
   }
 
+  const uploadFile = async (file: File): Promise<string | null> => {
+    setUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+    setUploading(false)
+    if (!res.ok) { flash('파일 업로드 실패', 'error'); return null }
+    const { url } = await res.json()
+    return url
+  }
+
+  const handleFormThumbChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFormThumbFile(file)
+    setFormThumbPreview(URL.createObjectURL(file))
+  }
+
+  const handleEditThumbChange = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setEditThumbFiles((p) => ({ ...p, [id]: file }))
+    setEditThumbPreviews((p) => ({ ...p, [id]: URL.createObjectURL(file) }))
+  }
+
   const handleCreate = async () => {
     if (!form.name.trim() || !form.url.trim()) {
       flash('사이트 이름과 URL을 입력해주세요.', 'error')
       return
     }
+    let thumbnailUrl = form.thumbnail_url || null
+    if (formThumbFile) {
+      const uploaded = await uploadFile(formThumbFile)
+      if (!uploaded) return
+      thumbnailUrl = uploaded
+    }
     const { data, error: err } = await supabase
       .from('promoted_sites')
-      .insert({ ...form, status: 'approved', order_index: sites.filter((s) => s.status === 'approved').length })
+      .insert({ ...form, thumbnail_url: thumbnailUrl, status: 'approved', order_index: sites.filter((s) => s.status === 'approved').length })
       .select()
       .single()
 
     if (err) { flash('생성 실패: ' + err.message, 'error'); return }
     setSites((prev) => [data, ...prev])
     setForm(EMPTY_FORM)
+    setFormThumbFile(null)
+    setFormThumbPreview(null)
     setShowForm(false)
     flash('사이트가 추가되었습니다!')
   }
 
   const handleUpdate = async (site: PromotedSite) => {
     setSaving(site.id)
+    let thumbnailUrl = site.thumbnail_url
+    if (editThumbFiles[site.id]) {
+      const uploaded = await uploadFile(editThumbFiles[site.id])
+      if (uploaded) {
+        thumbnailUrl = uploaded
+        setEditThumbFiles((p) => { const n = { ...p }; delete n[site.id]; return n })
+        setSites((prev) => prev.map((s) => s.id === site.id ? { ...s, thumbnail_url: uploaded } : s))
+      }
+    }
     const { error: err } = await supabase
       .from('promoted_sites')
       .update({
@@ -122,6 +179,7 @@ export default function AdminSitesPage() {
         url: site.url,
         description: site.description,
         logo_url: site.logo_url,
+        thumbnail_url: thumbnailUrl,
         category: site.category,
         is_active: site.is_active,
         order_index: site.order_index,
@@ -242,10 +300,38 @@ export default function AdminSitesPage() {
         </div>
       )}
 
+      {/* hidden file inputs */}
+      <input ref={thumbInputRef} type="file" accept="image/*,video/mp4,video/webm" onChange={handleFormThumbChange} className="hidden" />
+
       {/* 직접 추가 폼 (관리자) */}
       {showForm && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 p-6 mb-6">
           <h3 className="font-semibold text-gray-900 dark:text-white mb-4">사이트 직접 추가 (바로 승인됨)</h3>
+
+          {/* 대표 이미지/동영상 */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-500 mb-2">대표 이미지 / 동영상 (선택)</label>
+            {formThumbPreview ? (
+              <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                {formThumbFile?.type.startsWith('video') ? (
+                  <video src={formThumbPreview} className="w-full h-40 object-cover" controls />
+                ) : (
+                  <img src={formThumbPreview} alt="미리보기" className="w-full h-40 object-cover" />
+                )}
+                <button onClick={() => { setFormThumbFile(null); setFormThumbPreview(null) }}
+                  className="absolute top-2 right-2 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => thumbInputRef.current?.click()}
+                className="w-full h-24 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors">
+                <Upload className="w-5 h-5" />
+                <span className="text-xs">클릭하여 이미지 또는 동영상 업로드 (최대 50MB)</span>
+              </button>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">사이트 이름 *</label>
@@ -274,13 +360,13 @@ export default function AdminSitesPage() {
             </div>
           </div>
           <div className="flex gap-3 mt-4">
-            <button onClick={() => { setShowForm(false); setForm(EMPTY_FORM) }}
+            <button onClick={() => { setShowForm(false); setForm(EMPTY_FORM); setFormThumbFile(null); setFormThumbPreview(null) }}
               className="flex-1 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               취소
             </button>
-            <button onClick={handleCreate}
-              className="flex-1 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">
-              추가 (즉시 승인)
+            <button onClick={handleCreate} disabled={uploading}
+              className="flex-1 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
+              {uploading ? '업로드 중...' : '추가 (즉시 승인)'}
             </button>
           </div>
         </div>
@@ -355,6 +441,50 @@ export default function AdminSitesPage() {
                     )}
                     {site.rejection_reason && (
                       <span className="text-xs text-red-400 truncate">거절 사유: {site.rejection_reason}</span>
+                    )}
+                  </div>
+
+                  {/* 대표 이미지/동영상 */}
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">대표 이미지 / 동영상</label>
+                    <input
+                      type="file"
+                      accept="image/*,video/mp4,video/webm"
+                      className="hidden"
+                      ref={(el) => { editThumbRefs.current[site.id] = el }}
+                      onChange={(e) => handleEditThumbChange(site.id, e)}
+                    />
+                    {editThumbPreviews[site.id] ? (
+                      <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                        {editThumbFiles[site.id]?.type.startsWith('video') ? (
+                          <video src={editThumbPreviews[site.id]} className="w-full h-28 object-cover" controls />
+                        ) : (
+                          <img src={editThumbPreviews[site.id]} alt="미리보기" className="w-full h-28 object-cover" />
+                        )}
+                        <button onClick={() => {
+                          setEditThumbFiles((p) => { const n = { ...p }; delete n[site.id]; return n })
+                          setEditThumbPreviews((p) => { const n = { ...p }; delete n[site.id]; return n })
+                        }} className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : site.thumbnail_url ? (
+                      <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                        {isVideo(site.thumbnail_url) ? (
+                          <video src={site.thumbnail_url} className="w-full h-28 object-cover" muted />
+                        ) : (
+                          <img src={site.thumbnail_url} alt={site.name} className="w-full h-28 object-cover" />
+                        )}
+                        <button onClick={() => editThumbRefs.current[site.id]?.click()}
+                          className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-lg hover:bg-black/80 transition-colors">
+                          <Upload className="w-3 h-3" /> 교체
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => editThumbRefs.current[site.id]?.click()}
+                        className="w-full h-20 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center gap-2 text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors text-xs">
+                        <ImageIcon className="w-4 h-4" /> 이미지/동영상 업로드
+                      </button>
                     )}
                   </div>
 
