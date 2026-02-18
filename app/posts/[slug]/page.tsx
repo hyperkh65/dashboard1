@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 
-export const revalidate = 60
+export const revalidate = 0
 
 export default async function PostDetailPage({
   params,
@@ -15,12 +15,29 @@ export default async function PostDetailPage({
   const { slug } = await params
   const supabase = await createClient()
 
-  const { data: post } = await supabase
+  // 관리자 여부 확인
+  const { data: { user } } = await supabase.auth.getUser()
+  let isAdmin = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    isAdmin = profile?.is_admin ?? false
+  }
+
+  // 관리자는 미발행 글도 조회 가능
+  let query = supabase
     .from('posts')
     .select('*, category:categories(*), author:profiles(username, full_name, avatar_url)')
     .eq('slug', slug)
-    .eq('is_published', true)
-    .single()
+
+  if (!isAdmin) {
+    query = query.eq('is_published', true)
+  }
+
+  const { data: post } = await query.single()
 
   if (!post) notFound()
 
@@ -29,6 +46,15 @@ export default async function PostDetailPage({
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* 미발행 글 관리자 전용 배너 */}
+      {!post.is_published && isAdmin && (
+        <div className="mb-6 px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl text-sm text-yellow-700 dark:text-yellow-400 flex items-center gap-2">
+          <span className="font-semibold">⚠️ 미발행 글</span>
+          <span>이 글은 아직 발행되지 않았습니다. 관리자만 볼 수 있습니다.</span>
+          <Link href={`/admin/posts/${post.id}/edit`} className="ml-auto underline hover:no-underline">편집하기</Link>
+        </div>
+      )}
+
       {/* Back */}
       <Link href="/posts" className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 mb-8 transition-colors">
         <ArrowLeft className="w-4 h-4" />
