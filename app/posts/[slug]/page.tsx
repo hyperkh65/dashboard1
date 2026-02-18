@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Eye, Heart, Clock, Tag, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -13,9 +13,9 @@ export default async function PostDetailPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const supabase = await createClient()
 
-  // 관리자 여부 확인
+  // 사용자 인증 + 관리자 여부 (user client - RLS 적용)
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   let isAdmin = false
   if (user) {
@@ -27,22 +27,20 @@ export default async function PostDetailPage({
     isAdmin = profile?.is_admin ?? false
   }
 
-  // 관리자는 미발행 글도 조회 가능
-  let query = supabase
+  // 게시글 조회는 admin client 사용 (RLS 우회 → 봇 게시글도 조회 가능)
+  const adminSupabase = createAdminClient()
+  const { data: post } = await adminSupabase
     .from('posts')
     .select('*, category:categories(*), author:profiles(username, full_name, avatar_url)')
     .eq('slug', slug)
+    .single()
 
-  if (!isAdmin) {
-    query = query.eq('is_published', true)
-  }
-
-  const { data: post } = await query.single()
-
+  // 권한 체크: 미발행 글은 관리자만 접근 가능
   if (!post) notFound()
+  if (!post.is_published && !isAdmin) notFound()
 
   // 조회수 증가
-  await supabase.rpc('increment_view_count', { post_uuid: post.id })
+  await adminSupabase.rpc('increment_view_count', { post_uuid: post.id })
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

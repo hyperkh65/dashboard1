@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { TrendingUp, Eye, Heart, Tag, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -7,14 +7,14 @@ import AdminWriteButton from '@/components/posts/AdminWriteButton'
 import AdminPostActions from '@/components/posts/AdminPostActions'
 import NewsletterForm from '@/components/NewsletterForm'
 
-export const revalidate = 60
+export const revalidate = 0
 
 export default async function PostsPage({
   searchParams,
 }: {
   searchParams: Promise<{ category?: string; page?: string }>
 }) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const params = await searchParams
   const categorySlug = params.category
   const page = parseInt(params.page || '1')
