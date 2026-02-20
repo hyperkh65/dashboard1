@@ -51,6 +51,11 @@ export default function Navbar() {
             <Link href="/sites" className="text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors font-medium">
               사이트
             </Link>
+            {user && (
+              <Link href="/sns" className="text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors font-medium">
+                SNS 관리
+              </Link>
+            )}
           </div>
 
           {/* Auth Buttons */}
@@ -104,6 +109,7 @@ export default function Navbar() {
               { href: '/community', label: '커뮤니티' },
               { href: '/membership', label: '멤버십' },
               { href: '/sites', label: '사이트' },
+              ...(user ? [{ href: '/sns', label: 'SNS 관리' }] : []),
             ].map((item) => (
               <Link
                 key={item.href}
