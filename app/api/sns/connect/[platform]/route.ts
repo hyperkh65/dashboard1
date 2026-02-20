@@ -25,6 +25,19 @@ export async function GET(
     return NextResponse.json({ error: '지원하지 않는 플랫폼입니다' }, { status: 400 })
   }
 
+  // 플랫폼별 환경변수 사전 확인 → 미설정 시 안내 페이지로 리다이렉트
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const missingEnv: Record<string, boolean> = {
+    twitter: !process.env.TWITTER_CLIENT_ID || !process.env.TWITTER_CLIENT_SECRET,
+    threads:  !process.env.THREADS_APP_ID   || !process.env.THREADS_APP_SECRET,
+    facebook: !process.env.FACEBOOK_APP_ID  || !process.env.FACEBOOK_APP_SECRET,
+  }
+  if (missingEnv[platform]) {
+    return NextResponse.redirect(
+      `${siteUrl}/sns?error=${encodeURIComponent('SNS 앱 키가 설정되지 않았습니다. 관리자가 Vercel 환경변수를 등록해야 합니다.')}`
+    )
+  }
+
   const state = generateState()
   let codeVerifier: string | null = null
 
@@ -42,7 +55,6 @@ export async function GET(
     code_verifier: codeVerifier,
   })
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
   const redirectUri = `${siteUrl}/api/sns/callback/${platform}`
 
   let authUrl: URL

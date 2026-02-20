@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { BarChart3, FileText, BookOpen, Users, Bot, RefreshCcw, Settings, LayoutList, Crown, Shield, Globe } from 'lucide-react'
+import { BarChart3, FileText, BookOpen, Users, Bot, RefreshCcw, Settings, LayoutList, Crown, Shield, Globe, Share2 } from 'lucide-react'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -110,6 +110,7 @@ export default async function AdminPage() {
               { label: '새 강의', href: '/admin/courses/new', icon: BookOpen, desc: '강의 추가' },
               { label: '봇 실행', href: '/api-docs#bot', icon: Bot, desc: 'AI 콘텐츠 자동화' },
               { label: 'Notion 동기화', href: '/api-docs#notion', icon: RefreshCcw, desc: '백업 동기화' },
+              { label: 'SNS 설정', href: '/admin/sns', icon: Share2, desc: 'X·Threads·Facebook 연동 설정' },
             ].map((action) => (
               <Link
                 key={action.label}
