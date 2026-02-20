@@ -14,6 +14,11 @@ export default async function PostDetailPage({
 }) {
   const { slug } = await params
 
+  // 디버깅: slug 로깅
+  console.log('[PostDetailPage] Received slug:', slug)
+  console.log('[PostDetailPage] Slug length:', slug.length)
+  console.log('[PostDetailPage] Slug bytes:', Buffer.from(slug).toString('hex'))
+
   // 사용자 인증 + 관리자 여부 (user client - RLS 적용)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -29,11 +34,19 @@ export default async function PostDetailPage({
 
   // 게시글 조회는 admin client 사용 (RLS 우회 → 봇 게시글도 조회 가능)
   const adminSupabase = createAdminClient()
-  const { data: post } = await adminSupabase
+  const { data: post, error } = await adminSupabase
     .from('posts')
     .select('*, category:categories(*), author:profiles(username, full_name, avatar_url)')
     .eq('slug', slug)
     .single()
+
+  // 디버깅: 쿼리 결과 로깅
+  console.log('[PostDetailPage] Query error:', error)
+  console.log('[PostDetailPage] Post found:', !!post)
+  if (post) {
+    console.log('[PostDetailPage] Post slug in DB:', post.slug)
+    console.log('[PostDetailPage] Post is_published:', post.is_published)
+  }
 
   // 권한 체크: 미발행 글은 관리자만 접근 가능
   if (!post) notFound()
