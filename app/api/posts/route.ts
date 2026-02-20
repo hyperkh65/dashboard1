@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     categoryId = cat?.id || null
   }
 
-  const slug = `${title.toLowerCase().replace(/[^a-z0-9가-힣\s]/g, '').replace(/\s+/g, '-').substring(0, 50)}-${Date.now()}`
+  const slug = `${title.normalize('NFC').toLowerCase().replace(/[^a-z0-9가-힣\s]/g, '').replace(/\s+/g, '-').substring(0, 50)}-${Date.now()}`
 
   const { data, error } = await supabase
     .from('posts')

@@ -12,7 +12,10 @@ export default async function PostDetailPage({
 }: {
   params: Promise<{ slug: string }>
 }) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+
+  // 한글 유니코드 정규화 (NFC 형태로 통일)
+  const slug = rawSlug.normalize('NFC')
 
   // 디버깅: slug 로깅
   console.log('[PostDetailPage] Received slug:', slug)
@@ -34,11 +37,34 @@ export default async function PostDetailPage({
 
   // 게시글 조회는 admin client 사용 (RLS 우회 → 봇 게시글도 조회 가능)
   const adminSupabase = createAdminClient()
-  const { data: post, error } = await adminSupabase
+
+  // 먼저 정규화된 slug로 조회
+  let { data: post, error } = await adminSupabase
     .from('posts')
     .select('*, category:categories(*), author:profiles(username, full_name, avatar_url)')
     .eq('slug', slug)
     .single()
+
+  // 못 찾으면 timestamp 기반으로 재시도 (slug 끝부분이 timestamp)
+  if (!post && slug.includes('-')) {
+    const parts = slug.split('-')
+    const timestamp = parts[parts.length - 1]
+    if (timestamp && /^\d{13}$/.test(timestamp)) {
+      console.log('[PostDetailPage] Trying timestamp-based search:', timestamp)
+      const { data: allPosts } = await adminSupabase
+        .from('posts')
+        .select('*, category:categories(*), author:profiles(username, full_name, avatar_url)')
+        .like('slug', `%-${timestamp}`)
+        .limit(5)
+
+      if (allPosts && allPosts.length > 0) {
+        console.log('[PostDetailPage] Found posts by timestamp:', allPosts.map(p => p.slug))
+        // 가장 유사한 slug 찾기
+        post = allPosts.find(p => p.slug === slug) || allPosts[0]
+        error = null
+      }
+    }
+  }
 
   // 디버깅: 쿼리 결과 로깅
   console.log('[PostDetailPage] Query error:', error)

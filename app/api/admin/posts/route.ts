@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
 
   const slug =
     title
+      .normalize('NFC')  // 한글 유니코드 정규화
       .toLowerCase()
       .replace(/[^a-z0-9가-힣\s]/g, '')
       .replace(/\s+/g, '-')
