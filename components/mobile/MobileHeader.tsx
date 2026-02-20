@@ -20,7 +20,11 @@ export default function MobileHeader({ title, showBack, showWrite }: MobileHeade
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user))
-  }, [])
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [supabase])
 
   const isCommunity = pathname.startsWith('/community')
 

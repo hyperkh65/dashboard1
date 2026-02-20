@@ -77,7 +77,7 @@ export default function AdminPostActions({ postId, postSlug, currentCategoryId, 
 
   if (mode === 'overlay') {
     return (
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
         <button
           onClick={(e) => { e.preventDefault(); router.push(`/admin/posts/${postId}/edit`) }}
           className="w-7 h-7 bg-white dark:bg-gray-800 shadow rounded-lg flex items-center justify-center text-gray-600 hover:text-indigo-600 transition-colors"
