@@ -25,6 +25,7 @@ export default function AdminPostActions({ postId, postSlug, currentCategoryId, 
   const [categories, setCategories] = useState<Category[]>([])
   const [moving, setMoving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -38,9 +39,15 @@ export default function AdminPostActions({ postId, postSlug, currentCategoryId, 
 
   if (!isAdmin) return null
 
-  const handleDelete = async () => {
-    if (!confirm('이 글을 삭제하시겠습니까? 되돌릴 수 없습니다.')) return
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
     setDeleting(true)
+    setConfirmDelete(false)
     const res = await fetch(`/api/admin/posts/${postId}`, { method: 'DELETE' })
     if (res.ok) {
       router.push('/posts')
@@ -78,28 +85,48 @@ export default function AdminPostActions({ postId, postSlug, currentCategoryId, 
   if (mode === 'overlay') {
     return (
       <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
-        <button
-          onClick={(e) => { e.preventDefault(); router.push(`/admin/posts/${postId}/edit`) }}
-          className="w-7 h-7 bg-white dark:bg-gray-800 shadow rounded-lg flex items-center justify-center text-gray-600 hover:text-indigo-600 transition-colors"
-          title="편집"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={async (e) => { e.preventDefault(); await loadCategories() }}
-          className="w-7 h-7 bg-white dark:bg-gray-800 shadow rounded-lg flex items-center justify-center text-gray-600 hover:text-blue-600 transition-colors"
-          title="카테고리 이동"
-        >
-          {moving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderInput className="w-3.5 h-3.5" />}
-        </button>
-        <button
-          onClick={async (e) => { e.preventDefault(); await handleDelete() }}
-          disabled={deleting}
-          className="w-7 h-7 bg-white dark:bg-gray-800 shadow rounded-lg flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
-          title="삭제"
-        >
-          {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-        </button>
+        {confirmDelete ? (
+          <>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(false) }}
+              className="h-7 px-2 bg-gray-100 dark:bg-gray-700 shadow rounded-lg text-xs text-gray-600 dark:text-gray-300"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="h-7 px-2 bg-red-500 shadow rounded-lg text-xs text-white font-medium disabled:opacity-50"
+            >
+              {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '삭제'}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/admin/posts/${postId}/edit`) }}
+              className="w-7 h-7 bg-white dark:bg-gray-800 shadow rounded-lg flex items-center justify-center text-gray-600 hover:text-indigo-600 transition-colors"
+              title="편집"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={async (e) => { e.preventDefault(); e.stopPropagation(); await loadCategories() }}
+              className="w-7 h-7 bg-white dark:bg-gray-800 shadow rounded-lg flex items-center justify-center text-gray-600 hover:text-blue-600 transition-colors"
+              title="카테고리 이동"
+            >
+              {moving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderInput className="w-3.5 h-3.5" />}
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="w-7 h-7 bg-white dark:bg-gray-800 shadow rounded-lg flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
+              title="삭제"
+            >
+              {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            </button>
+          </>
+        )}
 
         {/* 카테고리 이동 드롭다운 */}
         {showMove && (
@@ -151,14 +178,33 @@ export default function AdminPostActions({ postId, postSlug, currentCategoryId, 
         이동
       </button>
 
-      <button
-        onClick={handleDelete}
-        disabled={deleting}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 transition-colors font-medium disabled:opacity-50"
-      >
-        {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-        삭제
-      </button>
+      {confirmDelete ? (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); setConfirmDelete(false) }}
+            className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg font-medium disabled:opacity-50"
+          >
+            {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            정말 삭제
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 transition-colors font-medium disabled:opacity-50"
+        >
+          {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+          삭제
+        </button>
+      )}
 
       {/* 카테고리 이동 드롭다운 */}
       {showMove && (
