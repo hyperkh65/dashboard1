@@ -37,7 +37,7 @@ export const PLATFORMS: Record<Platform, {
     color: '#1877F2',
     authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
     tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
-    scopes: ['pages_show_list', 'pages_manage_posts', 'publish_to_groups'],
+    scopes: ['pages_show_list', 'pages_manage_posts'],
     charLimit: 63206,
   },
 }
