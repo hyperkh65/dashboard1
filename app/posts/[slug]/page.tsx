@@ -1,0 +1,208 @@
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { notFound } from 'next/navigation'
+import { Eye, Heart, Clock, Tag, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+import { formatDistanceToNow } from 'date-fns'
+import { ko } from 'date-fns/locale'
+
+export const revalidate = 0
+
+export default async function PostDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug: rawSlug } = await params
+
+  // 한글 유니코드 정규화 (NFC 형태로 통일)
+  const slug = rawSlug.normalize('NFC')
+
+  // 디버깅: slug 로깅
+  console.log('[PostDetailPage] Received slug:', slug)
+  console.log('[PostDetailPage] Slug length:', slug.length)
+  console.log('[PostDetailPage] Slug bytes:', Buffer.from(slug).toString('hex'))
+
+  // 사용자 인증 + 관리자 여부 (user client - RLS 적용)
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  let isAdmin = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    isAdmin = profile?.is_admin ?? false
+  }
+
+  // 게시글 조회는 admin client 사용 (RLS 우회 → 봇 게시글도 조회 가능)
+  const adminSupabase = createAdminClient()
+
+  // 먼저 정규화된 slug로 조회
+  let { data: post, error } = await adminSupabase
+    .from('posts')
+    .select('*, category:categories(*), author:profiles(username, full_name, avatar_url)')
+    .eq('slug', slug)
+    .single()
+
+  // 못 찾으면 timestamp 기반으로 재시도 (slug 끝부분이 timestamp)
+  if (!post && slug.includes('-')) {
+    const parts = slug.split('-')
+    const timestamp = parts[parts.length - 1]
+    if (timestamp && /^\d{13}$/.test(timestamp)) {
+      console.log('[PostDetailPage] Trying timestamp-based search:', timestamp)
+      const { data: allPosts } = await adminSupabase
+        .from('posts')
+        .select('*, category:categories(*), author:profiles(username, full_name, avatar_url)')
+        .like('slug', `%-${timestamp}`)
+        .limit(5)
+
+      if (allPosts && allPosts.length > 0) {
+        console.log('[PostDetailPage] Found posts by timestamp:', allPosts.map(p => p.slug))
+        // 가장 유사한 slug 찾기
+        post = allPosts.find(p => p.slug === slug) || allPosts[0]
+        error = null
+      }
+    }
+  }
+
+  // 디버깅: 쿼리 결과 로깅
+  console.log('[PostDetailPage] Query error:', error)
+  console.log('[PostDetailPage] Post found:', !!post)
+  if (post) {
+    console.log('[PostDetailPage] Post slug in DB:', post.slug)
+    console.log('[PostDetailPage] Post is_published:', post.is_published)
+  }
+
+  // 권한 체크: 미발행 글은 관리자만 접근 가능
+  if (!post) notFound()
+  if (!post.is_published && !isAdmin) notFound()
+
+  // 조회수 증가
+  await adminSupabase.rpc('increment_view_count', { post_uuid: post.id })
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* 미발행 글 관리자 전용 배너 */}
+      {!post.is_published && isAdmin && (
+        <div className="mb-6 px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-xl text-sm text-yellow-700 dark:text-yellow-400 flex items-center gap-2">
+          <span className="font-semibold">⚠️ 미발행 글</span>
+          <span>이 글은 아직 발행되지 않았습니다. 관리자만 볼 수 있습니다.</span>
+          <Link href={`/admin/posts/${post.id}/edit`} className="ml-auto underline hover:no-underline">편집하기</Link>
+        </div>
+      )}
+
+      {/* Back */}
+      <Link href="/posts" className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 mb-8 transition-colors">
+        <ArrowLeft className="w-4 h-4" />
+        AI 인사이트로 돌아가기
+      </Link>
+
+      {/* Header */}
+      <div className="mb-8">
+        {post.category && (
+          <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1 rounded-full">
+            {post.category.name}
+          </span>
+        )}
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mt-4 mb-4 leading-tight">
+          {post.title}
+        </h1>
+
+        <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+          {post.author && (
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs">
+                {post.author.full_name?.[0] || 'A'}
+              </div>
+              <span>{post.author.full_name || post.author.username || '관리자'}</span>
+            </div>
+          )}
+          {post.is_bot_generated && (
+            <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full text-xs">🤖 봇</span>
+          )}
+          <span className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            {post.published_at
+              ? formatDistanceToNow(new Date(post.published_at), { addSuffix: true, locale: ko })
+              : '방금 전'}
+          </span>
+          <span className="flex items-center gap-1">
+            <Eye className="w-4 h-4" /> {post.view_count + 1}
+          </span>
+          <span className="flex items-center gap-1">
+            <Heart className="w-4 h-4" /> {post.like_count}
+          </span>
+        </div>
+      </div>
+
+      {/* Cover Image */}
+      {post.cover_image && (
+        <div className="rounded-2xl overflow-hidden mb-8 aspect-video">
+          <img src={post.cover_image} alt={post.title} className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="prose prose-lg dark:prose-invert max-w-none">
+        {post.content ? (
+          <div className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
+            {post.content}
+          </div>
+        ) : (
+          <p className="text-gray-500">콘텐츠가 없습니다.</p>
+        )}
+      </div>
+
+      {/* Media (images & videos) */}
+      {post.media_urls && post.media_urls.length > 0 && (
+        <div className="mt-8 space-y-4">
+          {post.media_urls.map((url: string, i: number) => {
+            const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url)
+            return isVideo ? (
+              <video
+                key={i}
+                src={url}
+                controls
+                className="w-full rounded-2xl max-h-[480px] bg-black"
+              />
+            ) : (
+              <img
+                key={i}
+                src={url}
+                alt={`미디어 ${i + 1}`}
+                className="w-full rounded-2xl object-contain max-h-[600px] bg-gray-50 dark:bg-gray-800"
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {/* Tags */}
+      {post.tags && post.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-8 pt-8 border-t border-gray-100 dark:border-gray-800">
+          {post.tags.map((tag: string) => (
+            <span
+              key={tag}
+              className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full text-sm text-gray-600 dark:text-gray-400"
+            >
+              <Tag className="w-3.5 h-3.5" /> {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Source */}
+      {post.source_url && (
+        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            출처:{' '}
+            <a href={post.source_url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline break-all">
+              {post.source_url}
+            </a>
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
