@@ -67,6 +67,12 @@ export async function GET(
           `${process.env.TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`
         ).toString('base64')
 
+        console.log('[Twitter OAuth] 요청 정보:', {
+          redirectUri,
+          clientIdExists: !!process.env.TWITTER_CLIENT_ID,
+          clientSecretExists: !!process.env.TWITTER_CLIENT_SECRET,
+        })
+
         const tokenRes = await fetch(config.tokenUrl, {
           method: 'POST',
           headers: {
@@ -82,6 +88,13 @@ export async function GET(
           }),
         })
         const tokenData = await tokenRes.json()
+
+        console.log('[Twitter OAuth] 응답:', {
+          status: tokenRes.status,
+          ok: tokenRes.ok,
+          data: tokenData,
+        })
+
         if (!tokenRes.ok) throw new Error(JSON.stringify(tokenData))
         accessToken = tokenData.access_token
         refreshToken = tokenData.refresh_token || null
