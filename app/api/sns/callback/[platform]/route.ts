@@ -137,7 +137,7 @@ export async function GET(
 
       case 'facebook': {
         const tokenRes = await fetch(
-          `${config.tokenUrl}?client_id=${process.env.FACEBOOK_APP_ID}&client_secret=${process.env.FACEBOOK_APP_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`
+          `${config.tokenUrl}?client_id=${process.env.FACEBOOK_CLIENT_ID}&client_secret=${process.env.FACEBOOK_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`
         )
         const tokenData = await tokenRes.json()
         if (!tokenRes.ok || tokenData.error) throw new Error(JSON.stringify(tokenData))
