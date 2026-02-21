@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
   "crons": [
     {
       "path": "/api/sns/cron",
@@ -6,3 +11,4 @@
     }
   ]
 }
+
