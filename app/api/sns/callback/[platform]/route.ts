@@ -114,7 +114,7 @@ export async function GET(
         const tokenData = await tokenRes.json()
         if (!tokenRes.ok) throw new Error(JSON.stringify(tokenData))
         const shortToken = tokenData.access_token
-        platformUserId = String(tokenData.user_id)
+        const tempUserId = String(tokenData.user_id)
 
         // 장기 토큰으로 교환
         const ltRes = await fetch(
@@ -124,11 +124,13 @@ export async function GET(
         accessToken = ltData.access_token || shortToken
         expiresIn = ltData.expires_in || null
 
-        // 사용자 정보
+        // 사용자 정보 가져오기 (실제 Threads User ID는 여기서!)
         const userRes = await fetch(
-          `https://graph.threads.net/v1.0/${platformUserId}?fields=id,username,name,threads_profile_picture_url&access_token=${accessToken}`
+          `https://graph.threads.net/v1.0/${tempUserId}?fields=id,username,name,threads_profile_picture_url&access_token=${accessToken}`
         )
         const userData = await userRes.json()
+        // ✅ userData.id를 platformUserId로 사용 (이게 실제 Threads User ID!)
+        platformUserId = userData.id
         platformUsername = `@${userData.username}`
         platformDisplayName = userData.name || userData.username
         platformAvatar = userData.threads_profile_picture_url || null
