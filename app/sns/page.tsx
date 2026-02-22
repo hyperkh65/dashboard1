@@ -193,7 +193,14 @@ function ConnectionsTab() {
   const fetchConnections = useCallback(async () => {
     setLoading(true)
     const res = await fetch('/api/sns/connections')
-    if (res.ok) setConnections(await res.json())
+    const data = await res.json()
+    console.log('[SNS Frontend] API 응답:', { status: res.status, data })
+    if (res.ok) {
+      setConnections(data)
+      console.log('[SNS Frontend] Connections 설정됨:', data)
+    } else {
+      console.error('[SNS Frontend] API 에러:', data)
+    }
     setLoading(false)
   }, [])
 
@@ -211,10 +218,14 @@ function ConnectionsTab() {
 
   const connectedMap = Object.fromEntries(connections.map((c) => [c.platform, c]))
 
+  console.log('[SNS Frontend] ConnectedMap:', connectedMap)
+  console.log('[SNS Frontend] PLATFORMS:', PLATFORMS.map(p => p.key))
+
   return (
     <div className="grid gap-4 sm:grid-cols-3">
       {PLATFORMS.map((p) => {
         const conn = connectedMap[p.key]
+        console.log(`[SNS Frontend] Platform ${p.key}:`, { found: !!conn, conn })
         return (
           <div key={p.key} className="border border-gray-200 rounded-xl p-5 flex flex-col gap-3">
             <div className="flex items-center gap-3">
