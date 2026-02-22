@@ -2,7 +2,7 @@
  * SNS 플랫폼 설정 및 OAuth 헬퍼
  */
 
-export type Platform = 'twitter' | 'threads' | 'facebook'
+export type Platform = 'twitter' | 'threads' | 'facebook' | 'instagram'
 
 export const PLATFORMS: Record<Platform, {
   name: string
@@ -39,6 +39,15 @@ export const PLATFORMS: Record<Platform, {
     tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
     scopes: ['pages_show_list', 'pages_manage_posts'],
     charLimit: 63206,
+  },
+  instagram: {
+    name: 'Instagram',
+    icon: '📷',
+    color: '#E4405F',
+    authUrl: 'https://api.instagram.com/oauth/authorize',
+    tokenUrl: 'https://api.instagram.com/oauth/access_token',
+    scopes: ['instagram_basic', 'instagram_content_publish'],
+    charLimit: 2200,
   },
 }
 
@@ -170,6 +179,46 @@ export async function postToFacebook(
   return { id }
 }
 
+export async function postToInstagram(
+  accessToken: string,
+  userId: string,
+  content: string,
+  imageUrl?: string,
+): Promise<{ id: string }> {
+  // Instagram Graph API로 미디어 컨테이너 생성
+  const createRes = await fetch(
+    `https://graph.instagram.com/${userId}/media`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        caption: content.substring(0, 2200),
+        image_url: imageUrl,
+        access_token: accessToken,
+      }),
+    },
+  )
+  if (!createRes.ok) {
+    throw new Error(`Instagram 컨테이너 생성 실패: ${await createRes.text()}`)
+  }
+  const { id: containerId } = await createRes.json()
+
+  // 미디어 게시
+  const publishRes = await fetch(
+    `https://graph.instagram.com/${userId}/media_publish`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ creation_id: containerId, access_token: accessToken }),
+    },
+  )
+  if (!publishRes.ok) {
+    throw new Error(`Instagram 게시 실패: ${await publishRes.text()}`)
+  }
+  const { id } = await publishRes.json()
+  return { id }
+}
+
 // 플랫폼에 실제 포스팅
 export async function postToPlatform(
   platform: Platform,
@@ -184,5 +233,7 @@ export async function postToPlatform(
       return postToThreads(accessToken, platformUserId, content)
     case 'facebook':
       return postToFacebook(accessToken, content)
+    case 'instagram':
+      return postToInstagram(accessToken, platformUserId, content)
   }
 }

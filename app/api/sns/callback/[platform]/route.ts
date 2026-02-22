@@ -156,6 +156,46 @@ export async function GET(
         break
       }
 
+      case 'instagram': {
+        // Instagram Graph API로 토큰 교환
+        const formData = new URLSearchParams({
+          client_id: process.env.INSTAGRAM_CLIENT_ID!,
+          client_secret: process.env.INSTAGRAM_CLIENT_SECRET!,
+          grant_type: 'authorization_code',
+          redirect_uri: redirectUri,
+          code,
+        })
+
+        const tokenRes = await fetch(config.tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData,
+        })
+        const tokenData = await tokenRes.json()
+        if (!tokenRes.ok || tokenData.error) throw new Error(JSON.stringify(tokenData))
+
+        const shortToken = tokenData.access_token
+        platformUserId = String(tokenData.user_id)
+
+        // 장기 토큰으로 교환
+        const ltRes = await fetch(
+          `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${process.env.INSTAGRAM_CLIENT_SECRET}&access_token=${shortToken}`
+        )
+        const ltData = await ltRes.json()
+        accessToken = ltData.access_token || shortToken
+        expiresIn = ltData.expires_in || null
+
+        // 사용자 정보
+        const userRes = await fetch(
+          `https://graph.instagram.com/${platformUserId}?fields=id,username,account_type&access_token=${accessToken}`
+        )
+        const userData = await userRes.json()
+        platformUsername = `@${userData.username}`
+        platformDisplayName = userData.username
+        platformAvatar = null
+        break
+      }
+
       default:
         return NextResponse.redirect(`${siteUrl}/sns?error=unsupported_platform`)
     }
