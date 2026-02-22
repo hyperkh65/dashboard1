@@ -165,7 +165,7 @@ export async function GET(
       : null
 
     // DB에 연결 정보 저장 (upsert)
-    await admin.from('sns_connections').upsert({
+    const { data: upsertData, error: upsertError } = await admin.from('sns_connections').upsert({
       user_id: user.id,
       platform,
       access_token: accessToken,
@@ -176,9 +176,16 @@ export async function GET(
       platform_display_name: platformDisplayName,
       platform_avatar: platformAvatar,
       is_active: true,
+      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,platform' })
 
+    if (upsertError) {
+      console.error(`[SNS Callback] DB upsert 실패:`, upsertError)
+      return NextResponse.redirect(`${siteUrl}/sns?error=${encodeURIComponent(`DB 저장 실패: ${upsertError.message}`)}`)
+    }
+
+    console.log(`[SNS Callback] ${platform} 연결 성공:`, { user_id: user.id, platform })
     return NextResponse.redirect(`${siteUrl}/sns?connected=${platform}`)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
