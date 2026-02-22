@@ -127,11 +127,11 @@ export default function SnsPage() {
     const error = searchParams.get('error')
     if (connected) {
       alert(`✅ ${connected} 연결 완료!`)
-      router.replace('/sns')
+      window.location.href = '/sns'
     }
     if (error) {
       alert(`❌ 오류: ${decodeURIComponent(error)}`)
-      router.replace('/sns')
+      window.location.href = '/sns'
     }
   }, [searchParams])
 
