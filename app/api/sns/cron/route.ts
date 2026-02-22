@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   // 실행 대기 중인 스케줄 조회
   const { data: schedules } = await admin
     .from('sns_schedules')
-    .select('*, template:sns_post_templates(content)')
+    .select('*, template:sns_post_templates(content, media_urls, comments)')
     .eq('is_active', true)
     .lte('next_post_at', now)
     .or(`end_at.is.null,end_at.gte.${now}`)
@@ -59,11 +59,20 @@ export async function GET(req: NextRequest) {
       }
 
       try {
+        // 플랫폼별 댓글 찾기
+        const platformComment = schedule.template?.comments?.find(
+          (c: { platform: string }) => c.platform === platform
+        )
+
         const { id: platformPostId } = await postToPlatform(
           platform,
           conn.access_token,
           conn.platform_user_id || '',
-          content,
+          {
+            content,
+            mediaUrls: schedule.template?.media_urls || [],
+            comment: platformComment?.text,
+          },
         )
         await admin.from('sns_post_logs').insert({
           schedule_id: schedule.id,

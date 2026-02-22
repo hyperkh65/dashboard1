@@ -15,11 +15,18 @@ type Connection = {
   updated_at: string
 }
 
+type PlatformComment = {
+  platform: string
+  text: string
+}
+
 type Template = {
   id: string
   title: string
   content: string
   platforms: string[]
+  media_urls: string[]
+  comments: PlatformComment[]
   created_at: string
 }
 
@@ -61,6 +68,8 @@ const PLATFORMS = [
     bg: 'bg-black',
     textColor: 'text-white',
     charLimit: 280,
+    maxImages: 4,
+    supportsComments: false, // X는 스레드만 가능
   },
   {
     key: 'threads',
@@ -73,6 +82,8 @@ const PLATFORMS = [
     bg: 'bg-black',
     textColor: 'text-white',
     charLimit: 500,
+    maxImages: 10,
+    supportsComments: true, // Threads는 댓글 지원
   },
   {
     key: 'facebook',
@@ -85,6 +96,8 @@ const PLATFORMS = [
     bg: 'bg-[#1877F2]',
     textColor: 'text-white',
     charLimit: 63206,
+    maxImages: 10,
+    supportsComments: true, // Facebook은 댓글 지원
   },
   {
     key: 'instagram',
@@ -97,6 +110,8 @@ const PLATFORMS = [
     bg: 'bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500',
     textColor: 'text-white',
     charLimit: 2200,
+    maxImages: 10,
+    supportsComments: false, // Instagram은 댓글 미지원
   },
 ]
 
@@ -394,6 +409,32 @@ function TemplatesTab() {
                 {t.content}
               </pre>
 
+              {/* 이미지 미리보기 */}
+              {t.media_urls && t.media_urls.length > 0 && (
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {t.media_urls.map((url, i) => (
+                    <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                  ))}
+                </div>
+              )}
+
+              {/* 댓글 미리보기 */}
+              {t.comments && t.comments.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {t.comments.map((c, i) => {
+                    const pl = PLATFORMS.find((p) => p.key === c.platform)
+                    return (
+                      <div key={i} className="text-xs text-gray-500 flex items-center gap-1">
+                        <span className={`px-1.5 py-0.5 rounded ${pl?.bg} ${pl?.textColor}`}>
+                          {pl?.name}
+                        </span>
+                        <span>댓글: {c.text.substring(0, 30)}{c.text.length > 30 ? '...' : ''}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
               <div className="flex items-center justify-between mt-3">
                 <span className="text-xs text-gray-400">{formatDate(t.created_at)}</span>
                 <button
@@ -424,12 +465,67 @@ function TemplateForm({
   const [title, setTitle] = useState(initial?.title ?? '')
   const [content, setContent] = useState(initial?.content ?? '')
   const [platforms, setPlatforms] = useState<string[]>(initial?.platforms ?? [])
+  const [mediaUrls, setMediaUrls] = useState<string[]>(initial?.media_urls ?? [])
+  const [comments, setComments] = useState<PlatformComment[]>(initial?.comments ?? [])
+  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const togglePlatform = (key: string) => {
     setPlatforms((prev) =>
       prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]
     )
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    // 최대 10개 제한
+    if (mediaUrls.length + files.length > 10) {
+      alert('이미지는 최대 10개까지 업로드 가능합니다.')
+      return
+    }
+
+    setUploading(true)
+    for (const file of Array.from(files)) {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        const res = await fetch('/api/sns/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        const data = await res.json()
+        if (res.ok && data.url) {
+          setMediaUrls((prev) => [...prev, data.url])
+        } else {
+          alert(`업로드 실패: ${data.error}`)
+        }
+      } catch (err) {
+        alert('업로드 중 오류가 발생했습니다.')
+      }
+    }
+    setUploading(false)
+  }
+
+  const removeImage = (index: number) => {
+    setMediaUrls((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const updateComment = (platform: string, text: string) => {
+    setComments((prev) => {
+      const existing = prev.find((c) => c.platform === platform)
+      if (existing) {
+        return prev.map((c) => (c.platform === platform ? { ...c, text } : c))
+      } else {
+        return [...prev, { platform, text }]
+      }
+    })
+  }
+
+  const getComment = (platform: string) => {
+    return comments.find((c) => c.platform === platform)?.text ?? ''
   }
 
   const save = async () => {
@@ -443,21 +539,29 @@ function TemplateForm({
     await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content, platforms }),
+      body: JSON.stringify({ title, content, platforms, media_urls: mediaUrls, comments }),
     })
     setSaving(false)
     onSave()
   }
 
+  const selectedPlatformsWithComments = PLATFORMS.filter(
+    (p) => platforms.includes(p.key) && p.supportsComments
+  )
+
   return (
-    <div className="border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-3">
+    <div className="border border-blue-200 bg-blue-50 rounded-xl p-4 space-y-4">
       <h3 className="font-medium text-sm">{initial ? '템플릿 수정' : '새 템플릿'}</h3>
+
+      {/* 제목 */}
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="내부용 제목 (예: AI 뉴스 홍보)"
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
       />
+
+      {/* 내용 */}
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -465,6 +569,39 @@ function TemplateForm({
         rows={5}
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white resize-none"
       />
+
+      {/* 이미지 업로드 */}
+      <div>
+        <div className="text-xs text-gray-500 mb-2">이미지 첨부 (최대 10개)</div>
+        <div className="flex gap-2 flex-wrap items-center">
+          {mediaUrls.map((url, i) => (
+            <div key={i} className="relative group">
+              <img src={url} alt="" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
+              <button
+                onClick={() => removeImage(i)}
+                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {mediaUrls.length < 10 && (
+            <label className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+                disabled={uploading}
+              />
+              <span className="text-2xl text-gray-400">{uploading ? '...' : '+'}</span>
+            </label>
+          )}
+        </div>
+      </div>
+
+      {/* 플랫폼 선택 */}
       <div>
         <div className="text-xs text-gray-500 mb-2">게시할 플랫폼</div>
         <div className="flex gap-2 flex-wrap">
@@ -485,6 +622,33 @@ function TemplateForm({
           ))}
         </div>
       </div>
+
+      {/* 댓글 (플랫폼별) */}
+      {selectedPlatformsWithComments.length > 0 && (
+        <div>
+          <div className="text-xs text-gray-500 mb-2">댓글 (선택)</div>
+          <div className="space-y-2">
+            {selectedPlatformsWithComments.map((p) => (
+              <div key={p.key} className="flex items-start gap-2">
+                <div className={`w-6 h-6 rounded-full ${p.bg} ${p.textColor} flex items-center justify-center shrink-0 mt-1.5`}>
+                  {p.icon}
+                </div>
+                <input
+                  value={getComment(p.key)}
+                  onChange={(e) => updateComment(p.key, e.target.value)}
+                  placeholder={`${p.name} 첫 댓글...`}
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            💡 Facebook과 Threads만 댓글을 지원합니다
+          </div>
+        </div>
+      )}
+
+      {/* 저장/취소 버튼 */}
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="text-sm text-gray-500 px-4 py-2">취소</button>
         <button

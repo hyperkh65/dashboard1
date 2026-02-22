@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
 
-  const { title, content, platforms } = await req.json()
+  const { title, content, platforms, media_urls, comments } = await req.json()
   if (!title || !content) {
     return NextResponse.json({ error: 'title과 content는 필수입니다' }, { status: 400 })
   }
@@ -30,7 +30,14 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('sns_post_templates')
-    .insert({ user_id: user.id, title, content, platforms: platforms || [] })
+    .insert({
+      user_id: user.id,
+      title,
+      content,
+      platforms: platforms || [],
+      media_urls: media_urls || [],
+      comments: comments || [],
+    })
     .select()
     .single()
 

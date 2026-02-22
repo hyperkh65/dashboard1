@@ -47,11 +47,18 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+      // 플랫폼별 댓글 찾기
+      const platformComment = template.comments?.find((c: { platform: string }) => c.platform === platform)
+
       const { id: platformPostId } = await postToPlatform(
         platform,
         conn.access_token,
         conn.platform_user_id || '',
-        template.content,
+        {
+          content: template.content,
+          mediaUrls: template.media_urls || [],
+          comment: platformComment?.text,
+        },
       )
       results.push({ platform, success: true })
       await admin.from('sns_post_logs').insert({
