@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, BookOpen, Users, Zap, Star, TrendingUp, Coffee, Shield, Award, Sparkles } from 'lucide-react'
+import { APP_VERSION } from '@/lib/version'
 
 export default function HomePage() {
   return (
@@ -10,6 +11,7 @@ export default function HomePage() {
           <div className="inline-flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
             <Zap className="w-4 h-4" />
             AI 인사이트로 앞서가세요
+            <span className="text-xs bg-indigo-200 dark:bg-indigo-800 px-2 py-0.5 rounded-full font-mono">v{APP_VERSION}</span>
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
             AI 인사이트를 얻고<br />
