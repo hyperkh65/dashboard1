@@ -116,7 +116,7 @@ export async function postToThreads(
     text: options.content.substring(0, 500),
     access_token: accessToken,
   }
-  if (hasImages && options.mediaUrls) {
+  if (options.mediaUrls && options.mediaUrls.length > 0) {
     createBody.image_url = options.mediaUrls[0] // Threads는 단일 이미지
   }
 
@@ -210,7 +210,7 @@ export async function postToFacebook(
   if (!pages || pages.length === 0) {
     // 페이지가 없으면 개인 타임라인에 게시
     const body: Record<string, unknown> = { message: options.content, access_token: accessToken }
-    if (hasImages && options.mediaUrls) {
+    if (options.mediaUrls && options.mediaUrls.length > 0) {
       body.url = options.mediaUrls[0] // 단일 이미지 URL
     }
     const res = await fetch(
@@ -228,7 +228,7 @@ export async function postToFacebook(
     // 첫 번째 페이지에 게시
     const page = pages[0]
     const body: Record<string, unknown> = { message: options.content, access_token: page.access_token }
-    if (hasImages && options.mediaUrls) {
+    if (options.mediaUrls && options.mediaUrls.length > 0) {
       body.url = options.mediaUrls[0]
     }
     const res = await fetch(
