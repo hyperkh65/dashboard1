@@ -104,6 +104,22 @@ export async function postToTwitter(
   return { id: json.data.id }
 }
 
+async function waitForThreadsContainer(containerId: string, accessToken: string): Promise<void> {
+  const maxAttempts = 10
+  const delayMs = 3000
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(resolve => setTimeout(resolve, delayMs))
+    const res = await fetch(
+      `https://graph.threads.net/v1.0/${containerId}?fields=status,error_message&access_token=${accessToken}`,
+    )
+    if (!res.ok) continue
+    const data = await res.json()
+    if (data.status === 'FINISHED') return
+    if (data.status === 'ERROR') throw new Error(`Threads 컨테이너 오류: ${data.error_message}`)
+  }
+  throw new Error('Threads 컨테이너 준비 시간 초과')
+}
+
 export async function postToThreads(
   accessToken: string,
   userId: string,
@@ -137,7 +153,10 @@ export async function postToThreads(
   }
   const { id: containerId } = await createRes.json()
 
-  // Step 2: 게시
+  // Step 2: 컨테이너 상태가 FINISHED될 때까지 대기
+  await waitForThreadsContainer(containerId, accessToken)
+
+  // Step 3: 게시
   const publishRes = await fetch(
     `https://graph.threads.net/v1.0/${userId}/threads_publish`,
     {
@@ -189,6 +208,8 @@ async function postThreadsComment(
   )
   if (!createRes.ok) throw new Error('Threads 댓글 컨테이너 생성 실패')
   const { id: containerId } = await createRes.json()
+
+  await waitForThreadsContainer(containerId, accessToken)
 
   const publishRes = await fetch(
     `https://graph.threads.net/v1.0/${userId}/threads_publish`,
