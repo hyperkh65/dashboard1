@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
           content: template.content,
           mediaUrls: template.media_urls || [],
           comment: platformComment?.text,
+          commentMediaUrls: platformComment?.mediaUrls || [],
         },
       )
       results.push({ platform, success: true })

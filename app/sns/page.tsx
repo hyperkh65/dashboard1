@@ -18,6 +18,7 @@ type Connection = {
 type PlatformComment = {
   platform: string
   text: string
+  mediaUrls?: string[] // 댓글 미디어 URL
 }
 
 type Template = {
@@ -467,6 +468,16 @@ function TemplateForm({
   const [platforms, setPlatforms] = useState<string[]>(initial?.platforms ?? [])
   const [mediaUrls, setMediaUrls] = useState<string[]>(initial?.media_urls ?? [])
   const [comments, setComments] = useState<PlatformComment[]>(initial?.comments ?? [])
+  const [commentMediaUrls, setCommentMediaUrls] = useState<Record<string, string[]>>(() => {
+    // 초기 댓글에서 미디어 URL 추출
+    const initialMedia: Record<string, string[]> = {}
+    initial?.comments?.forEach(c => {
+      if (c.mediaUrls && c.mediaUrls.length > 0) {
+        initialMedia[c.platform] = c.mediaUrls
+      }
+    })
+    return initialMedia
+  })
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -476,13 +487,13 @@ function TemplateForm({
     )
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
     // 최대 10개 제한
     if (mediaUrls.length + files.length > 10) {
-      alert('이미지는 최대 10개까지 업로드 가능합니다.')
+      alert('미디어는 최대 10개까지 업로드 가능합니다.')
       return
     }
 
@@ -528,18 +539,66 @@ function TemplateForm({
     return comments.find((c) => c.platform === platform)?.text ?? ''
   }
 
+  const handleCommentMediaUpload = async (platform: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const currentMedia = commentMediaUrls[platform] || []
+    if (currentMedia.length + files.length > 3) {
+      alert('댓글당 미디어는 최대 3개까지 가능합니다.')
+      return
+    }
+
+    setUploading(true)
+    for (const file of Array.from(files)) {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        const res = await fetch('/api/sns/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        const data = await res.json()
+        if (res.ok && data.url) {
+          setCommentMediaUrls((prev) => ({
+            ...prev,
+            [platform]: [...(prev[platform] || []), data.url],
+          }))
+        } else {
+          alert(`업로드 실패: ${data.error}`)
+        }
+      } catch (err) {
+        alert('업로드 중 오류가 발생했습니다.')
+      }
+    }
+    setUploading(false)
+  }
+
+  const removeCommentMedia = (platform: string, index: number) => {
+    setCommentMediaUrls((prev) => ({
+      ...prev,
+      [platform]: (prev[platform] || []).filter((_, i) => i !== index),
+    }))
+  }
+
   const save = async () => {
     if (!title.trim() || !content.trim()) {
       alert('제목과 내용을 입력해주세요.')
       return
     }
     setSaving(true)
+    // 댓글에 미디어 URL 추가
+    const commentsWithMedia = comments.map(c => ({
+      ...c,
+      mediaUrls: commentMediaUrls[c.platform] || [],
+    }))
     const url = initial ? `/api/sns/templates/${initial.id}` : '/api/sns/templates'
     const method = initial ? 'PUT' : 'POST'
     await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content, platforms, media_urls: mediaUrls, comments }),
+      body: JSON.stringify({ title, content, platforms, media_urls: mediaUrls, comments: commentsWithMedia }),
     })
     setSaving(false)
     onSave()
@@ -570,13 +629,17 @@ function TemplateForm({
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white resize-none"
       />
 
-      {/* 이미지 업로드 */}
+      {/* 미디어 업로드 (이미지/동영상) */}
       <div>
-        <div className="text-xs text-gray-500 mb-2">이미지 첨부 (최대 10개)</div>
+        <div className="text-xs text-gray-500 mb-2">사진 또는 동영상 첨부 (최대 10개)</div>
         <div className="flex gap-2 flex-wrap items-center">
           {mediaUrls.map((url, i) => (
             <div key={i} className="relative group">
-              <img src={url} alt="" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
+              {url.match(/\.(mp4|mov|avi|mkv|webm|m4v)$/i) ? (
+                <video src={url} className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
+              ) : (
+                <img src={url} alt="" className="w-20 h-20 object-cover rounded-lg border border-gray-200" />
+              )}
               <button
                 onClick={() => removeImage(i)}
                 className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
@@ -589,9 +652,9 @@ function TemplateForm({
             <label className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 multiple
-                onChange={handleImageUpload}
+                onChange={handleMediaUpload}
                 className="hidden"
                 disabled={uploading}
               />
@@ -627,23 +690,56 @@ function TemplateForm({
       {selectedPlatformsWithComments.length > 0 && (
         <div>
           <div className="text-xs text-gray-500 mb-2">댓글 (선택)</div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {selectedPlatformsWithComments.map((p) => (
-              <div key={p.key} className="flex items-start gap-2">
-                <div className={`w-6 h-6 rounded-full ${p.bg} ${p.textColor} flex items-center justify-center shrink-0 mt-1.5`}>
-                  {p.icon}
+              <div key={p.key} className="border border-gray-100 rounded-lg p-3 bg-white">
+                <div className="flex items-start gap-2 mb-2">
+                  <div className={`w-6 h-6 rounded-full ${p.bg} ${p.textColor} flex items-center justify-center shrink-0 mt-1.5`}>
+                    {p.icon}
+                  </div>
+                  <input
+                    value={getComment(p.key)}
+                    onChange={(e) => updateComment(p.key, e.target.value)}
+                    placeholder={`${p.name} 첫 댓글...`}
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  />
                 </div>
-                <input
-                  value={getComment(p.key)}
-                  onChange={(e) => updateComment(p.key, e.target.value)}
-                  placeholder={`${p.name} 첫 댓글...`}
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                />
+                {/* 댓글 미디어 첨부 */}
+                <div className="flex gap-2 flex-wrap items-center ml-8">
+                  {(commentMediaUrls[p.key] || []).map((url, i) => (
+                    <div key={i} className="relative group">
+                      {url.match(/\.(mp4|mov|avi|mkv|webm|m4v)$/i) ? (
+                        <video src={url} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                      ) : (
+                        <img src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                      )}
+                      <button
+                        onClick={() => removeCommentMedia(p.key, i)}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {(commentMediaUrls[p.key] || []).length < 3 && (
+                    <label className="w-16 h-16 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        multiple
+                        onChange={(e) => handleCommentMediaUpload(p.key, e)}
+                        className="hidden"
+                        disabled={uploading}
+                      />
+                      <span className="text-lg text-gray-300">+</span>
+                    </label>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-          <div className="text-xs text-gray-400 mt-1">
-            💡 Facebook과 Threads만 댓글을 지원합니다
+          <div className="text-xs text-gray-400 mt-2">
+            💡 Facebook과 Threads는 댓글에 사진/동영상 첨부를 지원합니다 (최대 3개)
           </div>
         </div>
       )}
