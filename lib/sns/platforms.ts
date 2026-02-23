@@ -6,8 +6,9 @@ export type Platform = 'twitter' | 'threads' | 'facebook' | 'instagram'
 
 export type PostOptions = {
   content: string
-  mediaUrls?: string[]
+  mediaUrls?: string[] // 이미지 또는 동영상 URL
   comment?: string // 플랫폼별 첫 댓글
+  commentMediaUrls?: string[] // 댓글에 첨부할 미디어 URL
 }
 
 export const PLATFORMS: Record<Platform, {
@@ -78,6 +79,13 @@ export function generateState(): string {
   return Buffer.from(array).toString('hex')
 }
 
+// 미디어 타입 감지 (URL 기반)
+function isVideoUrl(url: string): boolean {
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v']
+  const lowerUrl = url.toLowerCase()
+  return videoExtensions.some(ext => lowerUrl.includes(ext))
+}
+
 // ============================================================
 // 플랫폼별 포스팅 함수
 // ============================================================
@@ -126,14 +134,19 @@ export async function postToThreads(
   options: PostOptions,
 ): Promise<{ id: string }> {
   // Step 1: 컨테이너 생성
-  const hasImages = options.mediaUrls && options.mediaUrls.length > 0
+  const hasMedia = options.mediaUrls && options.mediaUrls.length > 0
+  const isVideo = hasMedia && isVideoUrl(options.mediaUrls![0])
   const createBody: Record<string, unknown> = {
-    media_type: hasImages ? 'IMAGE' : 'TEXT',
+    media_type: isVideo ? 'VIDEO' : hasMedia ? 'IMAGE' : 'TEXT',
     text: options.content.substring(0, 500),
     access_token: accessToken,
   }
-  if (options.mediaUrls && options.mediaUrls.length > 0) {
-    createBody.image_url = options.mediaUrls[0] // Threads는 단일 이미지
+  if (hasMedia) {
+    if (isVideo) {
+      createBody.video_url = options.mediaUrls![0]
+    } else {
+      createBody.image_url = options.mediaUrls![0]
+    }
   }
 
   const createRes = await fetch(
@@ -177,7 +190,7 @@ export async function postToThreads(
   // Step 3: 댓글 달기 (옵션)
   if (options.comment && options.comment.trim()) {
     try {
-      await postThreadsComment(accessToken, userId, postId, options.comment)
+      await postThreadsComment(accessToken, userId, postId, options.comment, options.commentMediaUrls)
     } catch (err) {
       console.error('[Threads] 댓글 달기 실패:', err)
     }
@@ -191,19 +204,30 @@ async function postThreadsComment(
   userId: string,
   postId: string,
   comment: string,
+  mediaUrls?: string[],
 ): Promise<void> {
   // Threads 댓글 API (reply)
+  const hasMedia = mediaUrls && mediaUrls.length > 0
+  const isVideo = hasMedia && isVideoUrl(mediaUrls![0])
+  const requestBody: Record<string, unknown> = {
+    media_type: isVideo ? 'VIDEO' : hasMedia ? 'IMAGE' : 'TEXT',
+    text: comment.substring(0, 500),
+    reply_to_id: postId,
+    access_token: accessToken,
+  }
+  if (hasMedia) {
+    if (isVideo) {
+      requestBody.video_url = mediaUrls![0]
+    } else {
+      requestBody.image_url = mediaUrls![0]
+    }
+  }
   const createRes = await fetch(
     `https://graph.threads.net/v1.0/${userId}/threads`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        media_type: 'TEXT',
-        text: comment.substring(0, 500),
-        reply_to_id: postId,
-        access_token: accessToken,
-      }),
+      body: JSON.stringify(requestBody),
     },
   )
   if (!createRes.ok) throw new Error('Threads 댓글 컨테이너 생성 실패')
@@ -233,23 +257,26 @@ export async function postToFacebook(
   if (!pagesRes.ok) throw new Error('Facebook 페이지 목록 조회 실패')
   const { data: pages } = await pagesRes.json()
 
-  const hasImages = options.mediaUrls && options.mediaUrls.length > 0
+  const hasMedia = options.mediaUrls && options.mediaUrls.length > 0
+  const isVideo = hasMedia && isVideoUrl(options.mediaUrls![0])
   let postId: string
 
   if (!pages || pages.length === 0) {
     // 페이지가 없으면 개인 타임라인에 게시
     const body: Record<string, unknown> = { message: options.content, access_token: accessToken }
-    if (options.mediaUrls && options.mediaUrls.length > 0) {
-      body.url = options.mediaUrls[0] // 단일 이미지 URL
+    if (hasMedia) {
+      body.url = options.mediaUrls![0]
     }
-    const res = await fetch(
-      hasImages ? `https://graph.facebook.com/v18.0/me/photos` : `https://graph.facebook.com/v18.0/me/feed`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
-    )
+    const endpoint = isVideo
+      ? `https://graph.facebook.com/v18.0/me/videos`
+      : hasMedia
+      ? `https://graph.facebook.com/v18.0/me/photos`
+      : `https://graph.facebook.com/v18.0/me/feed`
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
     if (!res.ok) throw new Error(`Facebook 포스팅 실패: ${await res.text()}`)
     const { id } = await res.json()
     postId = id
@@ -257,19 +284,19 @@ export async function postToFacebook(
     // 첫 번째 페이지에 게시
     const page = pages[0]
     const body: Record<string, unknown> = { message: options.content, access_token: page.access_token }
-    if (options.mediaUrls && options.mediaUrls.length > 0) {
-      body.url = options.mediaUrls[0]
+    if (hasMedia) {
+      body.url = options.mediaUrls![0]
     }
-    const res = await fetch(
-      hasImages
-        ? `https://graph.facebook.com/v18.0/${page.id}/photos`
-        : `https://graph.facebook.com/v18.0/${page.id}/feed`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      },
-    )
+    const endpoint = isVideo
+      ? `https://graph.facebook.com/v18.0/${page.id}/videos`
+      : hasMedia
+      ? `https://graph.facebook.com/v18.0/${page.id}/photos`
+      : `https://graph.facebook.com/v18.0/${page.id}/feed`
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
     if (!res.ok) throw new Error(`Facebook 페이지 포스팅 실패: ${await res.text()}`)
     const { id } = await res.json()
     postId = id
@@ -278,7 +305,7 @@ export async function postToFacebook(
   // 댓글 달기 (옵션)
   if (options.comment && options.comment.trim()) {
     try {
-      await postFacebookComment(accessToken, postId, options.comment)
+      await postFacebookComment(accessToken, postId, options.comment, options.commentMediaUrls)
     } catch (err) {
       console.error('[Facebook] 댓글 달기 실패:', err)
     }
@@ -291,13 +318,18 @@ async function postFacebookComment(
   accessToken: string,
   postId: string,
   comment: string,
+  mediaUrls?: string[],
 ): Promise<void> {
+  const body: Record<string, unknown> = { message: comment, access_token: accessToken }
+  if (mediaUrls && mediaUrls.length > 0) {
+    body.attachment_url = mediaUrls![0] // Facebook 댓글은 단일 미디어 첨부
+  }
   const res = await fetch(
     `https://graph.facebook.com/v18.0/${postId}/comments`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: comment, access_token: accessToken }),
+      body: JSON.stringify(body),
     },
   )
   if (!res.ok) throw new Error('Facebook 댓글 달기 실패')
@@ -308,22 +340,29 @@ export async function postToInstagram(
   userId: string,
   options: PostOptions,
 ): Promise<{ id: string }> {
-  // Instagram은 이미지 필수
+  // Instagram은 미디어 필수
   if (!options.mediaUrls || options.mediaUrls.length === 0) {
-    throw new Error('Instagram은 이미지가 필수입니다')
+    throw new Error('Instagram은 이미지 또는 동영상이 필수입니다')
   }
 
+  const isVideo = isVideoUrl(options.mediaUrls![0])
   // Instagram Graph API로 미디어 컨테이너 생성
+  const createBody: Record<string, unknown> = {
+    caption: options.content.substring(0, 2200),
+    access_token: accessToken,
+  }
+  if (isVideo) {
+    createBody.media_type = 'REELS'
+    createBody.video_url = options.mediaUrls![0]
+  } else {
+    createBody.image_url = options.mediaUrls![0]
+  }
   const createRes = await fetch(
     `https://graph.instagram.com/${userId}/media`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        caption: options.content.substring(0, 2200),
-        image_url: options.mediaUrls![0], // 위에서 이미 체크함
-        access_token: accessToken,
-      }),
+      body: JSON.stringify(createBody),
     },
   )
   if (!createRes.ok) {
