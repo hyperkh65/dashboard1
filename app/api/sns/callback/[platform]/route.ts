@@ -130,6 +130,9 @@ export async function GET(
         )
         const userData = await userRes.json()
 
+        // 🔍 디버깅: Threads API 응답 로깅
+        console.log('[Threads API Response]:', JSON.stringify(userData, null, 2))
+
         // 에러 처리 추가
         if (!userRes.ok || userData.error) {
           console.error('[Threads Callback] 사용자 정보 조회 실패:', userData)
