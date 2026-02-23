@@ -25,8 +25,18 @@ export async function POST(req: NextRequest) {
     // 파일 크기 제한 (100MB - 동영상 지원)
     const MAX_SIZE = 100 * 1024 * 1024
     if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'File too large (max 100MB)' }, { status: 400 })
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2)
+      console.error(`[Upload] File too large: ${sizeMB}MB, filename: ${file.name}`)
+      return NextResponse.json({
+        error: `파일이 너무 큽니다 (${sizeMB}MB). 최대 100MB까지 업로드 가능합니다.`
+      }, { status: 400 })
     }
+
+    // 파일 확장자 검증 (MIME 타입이 정확하지 않을 수 있음)
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+    const allowedImageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']
+    const allowedVideoExts = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v', '3gp', 'flv', 'wmv', 'mpg', 'mpeg', 'ogv']
+    const isValidExt = [...allowedImageExts, ...allowedVideoExts].includes(ext)
 
     // 파일 타입 검증 (이미지 + 모든 동영상 형식)
     const allowedTypes = [
@@ -40,17 +50,20 @@ export async function POST(req: NextRequest) {
       // 모바일/기타
       'application/octet-stream', // 일부 동영상 편집 도구는 이 MIME 타입 사용
     ]
-    if (!allowedTypes.includes(file.type)) {
-      console.error(`[Upload] Rejected file type: ${file.type}, filename: ${file.name}`)
+
+    // MIME 타입 또는 확장자가 유효하면 통과
+    if (!allowedTypes.includes(file.type) && !isValidExt) {
+      console.error(`[Upload] Rejected - Type: ${file.type}, Ext: ${ext}, Filename: ${file.name}, Size: ${file.size} bytes`)
       return NextResponse.json({
-        error: `지원하지 않는 파일 형식입니다: ${file.type}. 파일명: ${file.name}`
+        error: `지원하지 않는 파일 형식입니다.\nMIME: ${file.type}\n확장자: .${ext}\n파일명: ${file.name}`
       }, { status: 400 })
     }
+
+    console.log(`[Upload] Accepted - Type: ${file.type}, Ext: ${ext}, Size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`)
 
     // 파일명 생성 (중복 방지)
     const timestamp = Date.now()
     const random = Math.random().toString(36).substring(7)
-    const ext = file.name.split('.').pop()
     const fileName = `${user.id}/${timestamp}-${random}.${ext}`
 
     // Supabase Storage에 업로드
