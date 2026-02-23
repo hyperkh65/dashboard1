@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
             content,
             mediaUrls: schedule.template?.media_urls || [],
             comment: platformComment?.text,
+            commentMediaUrls: platformComment?.mediaUrls || [],
           },
         )
         await admin.from('sns_post_logs').insert({
