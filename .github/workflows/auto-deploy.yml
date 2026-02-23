@@ -1,0 +1,36 @@
+name: Auto Deploy to Main
+
+on:
+  push:
+    branches:
+      - 'claude/**'  # claude/ 브랜치에 푸시될 때마다
+
+permissions:
+  contents: write  # main 브랜치에 푸시 권한
+
+jobs:
+  merge-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 전체 히스토리 가져오기
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: Merge to main
+        run: |
+          git checkout main
+          git merge --no-ff ${{ github.ref_name }} -m "Auto-merge: ${{ github.ref_name }} → main"
+
+      - name: Push to main
+        run: |
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

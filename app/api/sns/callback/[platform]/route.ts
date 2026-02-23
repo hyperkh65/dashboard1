@@ -114,7 +114,7 @@ export async function GET(
         const tokenData = await tokenRes.json()
         if (!tokenRes.ok) throw new Error(JSON.stringify(tokenData))
         const shortToken = tokenData.access_token
-        platformUserId = String(tokenData.user_id)
+        const tempUserId = String(tokenData.user_id)
 
         // 장기 토큰으로 교환
         const ltRes = await fetch(
@@ -124,11 +124,13 @@ export async function GET(
         accessToken = ltData.access_token || shortToken
         expiresIn = ltData.expires_in || null
 
-        // 사용자 정보
+        // 사용자 정보 가져오기 (실제 Threads User ID는 여기서!)
         const userRes = await fetch(
-          `https://graph.threads.net/v1.0/${platformUserId}?fields=id,username,name,threads_profile_picture_url&access_token=${accessToken}`
+          `https://graph.threads.net/v1.0/${tempUserId}?fields=id,username,name,threads_profile_picture_url&access_token=${accessToken}`
         )
         const userData = await userRes.json()
+        // ✅ userData.id를 platformUserId로 사용 (이게 실제 Threads User ID!)
+        platformUserId = userData.id
         platformUsername = `@${userData.username}`
         platformDisplayName = userData.name || userData.username
         platformAvatar = userData.threads_profile_picture_url || null
@@ -153,6 +155,46 @@ export async function GET(
         platformUsername = userData.name
         platformDisplayName = userData.name
         platformAvatar = userData.picture?.data?.url || null
+        break
+      }
+
+      case 'instagram': {
+        // Instagram Graph API로 토큰 교환
+        const formData = new URLSearchParams({
+          client_id: process.env.INSTAGRAM_CLIENT_ID!,
+          client_secret: process.env.INSTAGRAM_CLIENT_SECRET!,
+          grant_type: 'authorization_code',
+          redirect_uri: redirectUri,
+          code,
+        })
+
+        const tokenRes = await fetch(config.tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData,
+        })
+        const tokenData = await tokenRes.json()
+        if (!tokenRes.ok || tokenData.error) throw new Error(JSON.stringify(tokenData))
+
+        const shortToken = tokenData.access_token
+        platformUserId = String(tokenData.user_id)
+
+        // 장기 토큰으로 교환
+        const ltRes = await fetch(
+          `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${process.env.INSTAGRAM_CLIENT_SECRET}&access_token=${shortToken}`
+        )
+        const ltData = await ltRes.json()
+        accessToken = ltData.access_token || shortToken
+        expiresIn = ltData.expires_in || null
+
+        // 사용자 정보
+        const userRes = await fetch(
+          `https://graph.instagram.com/${platformUserId}?fields=id,username,account_type&access_token=${accessToken}`
+        )
+        const userData = await userRes.json()
+        platformUsername = `@${userData.username}`
+        platformDisplayName = userData.username
+        platformAvatar = null
         break
       }
 

@@ -31,6 +31,7 @@ export async function GET(
     twitter: !process.env.TWITTER_CLIENT_ID || !process.env.TWITTER_CLIENT_SECRET,
     threads:  !process.env.THREADS_APP_ID   || !process.env.THREADS_APP_SECRET,
     facebook: !process.env.FACEBOOK_APP_ID  || !process.env.FACEBOOK_APP_SECRET,
+    instagram: !process.env.INSTAGRAM_CLIENT_ID || !process.env.INSTAGRAM_CLIENT_SECRET,
   }
   if (missingEnv[platform]) {
     return NextResponse.redirect(
@@ -86,6 +87,15 @@ export async function GET(
       authUrl.searchParams.set('client_id', process.env.FACEBOOK_APP_ID!)
       authUrl.searchParams.set('redirect_uri', redirectUri)
       authUrl.searchParams.set('scope', config.scopes.join(','))
+      authUrl.searchParams.set('state', state)
+      break
+    }
+    case 'instagram': {
+      authUrl = new URL(config.authUrl)
+      authUrl.searchParams.set('client_id', process.env.INSTAGRAM_CLIENT_ID!)
+      authUrl.searchParams.set('redirect_uri', redirectUri)
+      authUrl.searchParams.set('scope', config.scopes.join(','))
+      authUrl.searchParams.set('response_type', 'code')
       authUrl.searchParams.set('state', state)
       break
     }

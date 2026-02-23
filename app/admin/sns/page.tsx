@@ -128,6 +128,15 @@ const ENV_GROUPS: { platform: string; color: string; guide: string; items: EnvIt
     ],
   },
   {
+    platform: 'Instagram',
+    color: 'bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 text-white',
+    guide: 'https://developers.facebook.com/apps/',
+    items: [
+      { key: 'INSTAGRAM_CLIENT_ID', label: 'Client ID', required: true },
+      { key: 'INSTAGRAM_CLIENT_SECRET', label: 'Client Secret', required: true },
+    ],
+  },
+  {
     platform: 'Cron (Vercel)',
     color: 'bg-indigo-600 text-white',
     guide: 'https://vercel.com/docs/cron-jobs',
@@ -169,6 +178,7 @@ export default async function AdminSnsPage() {
     { platform: 'X (Twitter)', url: `${siteUrl}/api/sns/callback/twitter` },
     { platform: 'Threads', url: `${siteUrl}/api/sns/callback/threads` },
     { platform: 'Facebook', url: `${siteUrl}/api/sns/callback/facebook` },
+    { platform: 'Instagram', url: `${siteUrl}/api/sns/callback/instagram` },
   ]
 
   return (
