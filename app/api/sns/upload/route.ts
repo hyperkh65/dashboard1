@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 /**
  * POST /api/sns/upload
- * SNS 포스팅용 이미지 업로드
+ * SNS 포스팅용 미디어 업로드 (이미지/동영상)
  * - Supabase Storage에 저장
- * - 최대 10MB
- * - 허용 포맷: jpg, jpeg, png, gif, webp
+ * - 최대 100MB
+ * - 허용 포맷: 이미지 (jpg, png, gif, webp), 동영상 (mp4, mov, avi, mkv, webm, m4v)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -22,14 +22,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // 파일 크기 제한 (10MB)
-    const MAX_SIZE = 10 * 1024 * 1024
+    // 파일 크기 제한 (100MB - 동영상 지원)
+    const MAX_SIZE = 100 * 1024 * 1024
     if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
+      return NextResponse.json({ error: 'File too large (max 100MB)' }, { status: 400 })
     }
 
-    // 파일 타입 검증
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    // 파일 타입 검증 (이미지 + 동영상)
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm', 'video/x-m4v'
+    ]
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ error: 'Invalid file type' }, { status: 400 })
     }
