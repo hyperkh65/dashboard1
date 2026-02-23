@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
  * SNS 포스팅용 미디어 업로드 (이미지/동영상)
  * - Supabase Storage에 저장
  * - 최대 100MB
- * - 허용 포맷: 이미지 (jpg, png, gif, webp), 동영상 (mp4, mov, avi, mkv, webm, m4v)
+ * - 허용 포맷: 모든 일반적인 이미지/동영상 형식 (jpg, png, gif, webp, mp4, mov, avi, mkv, webm, wmv, flv 등)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -28,13 +28,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File too large (max 100MB)' }, { status: 400 })
     }
 
-    // 파일 타입 검증 (이미지 + 동영상)
+    // 파일 타입 검증 (이미지 + 모든 동영상 형식)
     const allowedTypes = [
-      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-      'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm', 'video/x-m4v'
+      // 이미지
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml',
+      // 동영상 - 일반
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+      'video/webm', 'video/x-m4v', 'video/3gpp', 'video/3gpp2',
+      // 동영상 - 추가 포맷
+      'video/x-flv', 'video/x-ms-wmv', 'video/ogg', 'video/mp2t',
+      // 모바일/기타
+      'application/octet-stream', // 일부 동영상 편집 도구는 이 MIME 타입 사용
     ]
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type' }, { status: 400 })
+      console.error(`[Upload] Rejected file type: ${file.type}, filename: ${file.name}`)
+      return NextResponse.json({
+        error: `지원하지 않는 파일 형식입니다: ${file.type}. 파일명: ${file.name}`
+      }, { status: 400 })
     }
 
     // 파일명 생성 (중복 방지)
