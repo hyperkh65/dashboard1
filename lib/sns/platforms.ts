@@ -129,7 +129,11 @@ export async function postToThreads(
     },
   )
   if (!createRes.ok) {
-    throw new Error(`Threads 컨테이너 생성 실패: ${await createRes.text()}`)
+    const errorText = await createRes.text()
+    console.error('[Threads API Error] User ID:', userId)
+    console.error('[Threads API Error] Request:', createBody)
+    console.error('[Threads API Error] Response:', errorText)
+    throw new Error(`Threads 컨테이너 생성 실패: ${errorText}`)
   }
   const { id: containerId } = await createRes.json()
 
@@ -143,7 +147,11 @@ export async function postToThreads(
     },
   )
   if (!publishRes.ok) {
-    throw new Error(`Threads 게시 실패: ${await publishRes.text()}`)
+    const errorText = await publishRes.text()
+    console.error('[Threads Publish Error] Container ID:', containerId)
+    console.error('[Threads Publish Error] User ID:', userId)
+    console.error('[Threads Publish Error] Response:', errorText)
+    throw new Error(`Threads 게시 실패: ${errorText}`)
   }
   const { id: postId } = await publishRes.json()
 
