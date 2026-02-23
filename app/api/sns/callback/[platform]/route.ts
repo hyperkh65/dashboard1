@@ -124,11 +124,28 @@ export async function GET(
         accessToken = ltData.access_token || shortToken
         expiresIn = ltData.expires_in || null
 
-        // 사용자 정보 가져오기 (실제 Threads User ID는 여기서!)
+        // 사용자 정보 가져오기 (Threads는 /me 엔드포인트 사용)
         const userRes = await fetch(
-          `https://graph.threads.net/v1.0/${tempUserId}?fields=id,username,name,threads_profile_picture_url&access_token=${accessToken}`
+          `https://graph.threads.net/v1.0/me?fields=id,username,name,threads_profile_picture_url&access_token=${accessToken}`
         )
         const userData = await userRes.json()
+
+        // 🔍 디버깅: Threads API 응답 로깅
+        console.log('[Threads API Response]:', JSON.stringify(userData, null, 2))
+
+        // 에러 처리 추가
+        if (!userRes.ok || userData.error) {
+          console.error('[Threads Callback] 사용자 정보 조회 실패:', userData)
+          throw new Error(`Threads 사용자 정보 조회 실패: ${JSON.stringify(userData)}`)
+        }
+
+        if (!userData.id || !userData.username) {
+          console.error('[Threads Callback] 사용자 정보가 불완전:', userData)
+          throw new Error(`Threads 사용자 정보가 불완전합니다: ${JSON.stringify(userData)}`)
+        }
+
+        console.log('[Threads Callback] 사용자 정보 조회 성공:', { id: userData.id, username: userData.username })
+
         // ✅ userData.id를 platformUserId로 사용 (이게 실제 Threads User ID!)
         platformUserId = userData.id
         platformUsername = `@${userData.username}`
