@@ -86,6 +86,59 @@ function isVideoUrl(url: string): boolean {
   return videoExtensions.some(ext => lowerUrl.includes(ext))
 }
 
+// Facebook 에러 응답 타입
+interface FacebookError {
+  error?: {
+    message?: string
+    type?: string
+    code?: number
+    error_subcode?: number
+    is_transient?: boolean
+  }
+}
+
+// Facebook 일시적 에러 확인
+function isFacebookTransientError(errorText: string): boolean {
+  try {
+    const parsed: FacebookError = JSON.parse(errorText)
+    return parsed.error?.is_transient === true
+  } catch {
+    return false
+  }
+}
+
+// 지수 백오프를 사용한 재시도 함수
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  initialDelayMs = 2000,
+): Promise<T> {
+  let lastError: Error
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+
+      // 마지막 시도였다면 에러를 던짐
+      if (attempt === maxRetries) {
+        break
+      }
+
+      // Facebook 일시적 에러인 경우에만 재시도
+      if (!isFacebookTransientError(lastError.message)) {
+        throw lastError
+      }
+
+      // 지수 백오프로 대기
+      const delayMs = initialDelayMs * Math.pow(2, attempt)
+      console.log(`[Facebook] 일시적 에러 발생, ${delayMs}ms 후 재시도 (${attempt + 1}/${maxRetries})`)
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
+  throw lastError!
+}
+
 // ============================================================
 // 플랫폼별 포스팅 함수
 // ============================================================
@@ -272,14 +325,20 @@ export async function postToFacebook(
       : hasMedia
       ? `https://graph.facebook.com/v18.0/me/photos`
       : `https://graph.facebook.com/v18.0/me/feed`
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) throw new Error(`Facebook 포스팅 실패: ${await res.text()}`)
-    const { id } = await res.json()
-    postId = id
+
+    // 비디오 업로드는 재시도 로직 적용
+    const uploadFn = async () => {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error(`Facebook 포스팅 실패: ${await res.text()}`)
+      return res.json()
+    }
+
+    const result = isVideo ? await retryWithBackoff(uploadFn) : await uploadFn()
+    postId = result.id
   } else {
     // 첫 번째 페이지에 게시
     const page = pages[0]
@@ -292,14 +351,20 @@ export async function postToFacebook(
       : hasMedia
       ? `https://graph.facebook.com/v18.0/${page.id}/photos`
       : `https://graph.facebook.com/v18.0/${page.id}/feed`
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) throw new Error(`Facebook 페이지 포스팅 실패: ${await res.text()}`)
-    const { id } = await res.json()
-    postId = id
+
+    // 비디오 업로드는 재시도 로직 적용
+    const uploadFn = async () => {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error(`Facebook 페이지 포스팅 실패: ${await res.text()}`)
+      return res.json()
+    }
+
+    const result = isVideo ? await retryWithBackoff(uploadFn) : await uploadFn()
+    postId = result.id
   }
 
   // 댓글 달기 (옵션)
