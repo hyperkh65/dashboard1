@@ -100,7 +100,11 @@ interface FacebookError {
 // Facebook 일시적 에러 확인
 function isFacebookTransientError(errorText: string): boolean {
   try {
-    const parsed: FacebookError = JSON.parse(errorText)
+    // "Facebook 페이지 포스팅 실패: {...}" 형식 처리
+    const jsonMatch = errorText.match(/\{.*\}/)
+    if (!jsonMatch) return false
+
+    const parsed: FacebookError = JSON.parse(jsonMatch[0])
     return parsed.error?.is_transient === true
   } catch {
     return false
@@ -110,29 +114,35 @@ function isFacebookTransientError(errorText: string): boolean {
 // 지수 백오프를 사용한 재시도 함수
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  maxRetries = 3,
-  initialDelayMs = 2000,
+  maxRetries = 5, // 3 -> 5로 증가
+  initialDelayMs = 3000, // 2초 -> 3초로 증가
 ): Promise<T> {
   let lastError: Error
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
+      if (attempt > 0) {
+        console.log(`[Facebook Retry] 시도 ${attempt + 1}/${maxRetries + 1}`)
+      }
       return await fn()
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err))
 
       // 마지막 시도였다면 에러를 던짐
       if (attempt === maxRetries) {
+        console.error(`[Facebook Retry] 모든 재시도 실패 (${maxRetries + 1}회)`)
         break
       }
 
       // Facebook 일시적 에러인 경우에만 재시도
-      if (!isFacebookTransientError(lastError.message)) {
+      const isTransient = isFacebookTransientError(lastError.message)
+      if (!isTransient) {
+        console.error('[Facebook Retry] 일시적 에러가 아님, 재시도 중단')
         throw lastError
       }
 
       // 지수 백오프로 대기
       const delayMs = initialDelayMs * Math.pow(2, attempt)
-      console.log(`[Facebook] 일시적 에러 발생, ${delayMs}ms 후 재시도 (${attempt + 1}/${maxRetries})`)
+      console.log(`[Facebook Retry] 일시적 에러 감지! ${delayMs}ms 후 재시도... (${attempt + 1}/${maxRetries})`)
       await new Promise(resolve => setTimeout(resolve, delayMs))
     }
   }
