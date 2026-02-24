@@ -2,7 +2,8 @@
   "git": {
     "deploymentEnabled": {
       "main": true,
-      "claude/v1.1.7-release-9bIZf": true
+      "claude/v1.1.7-release-9bIZf": true,
+      "claude/v1.2.0-release-9bIZf": true
     }
   },
   "crons": [
