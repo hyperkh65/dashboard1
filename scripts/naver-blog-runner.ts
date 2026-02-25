@@ -367,11 +367,6 @@ async function main() {
     ],
   })
 
-  // 봇 감지 회피 설정
-  browser.on('targetcreated', async () => {
-    // navigator.webdriver 숨기기는 context별로 처리
-  })
-
   console.log('✅ Playwright 브라우저 실행됨')
 
   const runCycle = async () => {
